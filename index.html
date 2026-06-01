@@ -14,6 +14,10 @@
        - [แก้] เปลี่ยนไปใช้ Toast Notification (แบนเนอร์ลอยด้านล่าง) #toastBox แทน alert()
     3. [UI] ปัญหารูดหน้าจอแล้วเว็บเด้งรีเฟรชเอง (Pull-to-refresh) บนมือถือ
        - [แก้] ใส่ CSS `overscroll-behavior-y: none;` ที่ body และ `touch-action: manipulation;` ที่ปุ่ม
+    4. [System] ระบบ Error Tracing & Fallback
+       - [แก้] เพิ่มรหัสบั๊ก (เช่น [INIT_01]) และ console.error() เพื่อให้ Dev ไล่โค้ดง่ายขึ้น + แก้ Silent Bug ในหน้า Dash
+    5. [UI] เอฟเฟกต์ Fade-in (Smooth Loading)
+       - [แก้] ใส่ CSS @keyframes และ JS Class Toggling เพื่อให้หน้าเว็บค่อยๆ ปรากฏขึ้นมา
     ========================================== 
     -->
     <style>
@@ -73,6 +77,12 @@
         #toastBox.show { visibility: visible; opacity: 1; bottom: 50px; }
         #toastBox.success { background-color: var(--primary); }
         #toastBox.error { background-color: #ef4444; }
+
+        /* 🌟 เอฟเฟกต์ Fade-in */
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeSlideUp 0.4s ease-out forwards; }
+        tr.fade-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -118,6 +128,7 @@
             <h3 id="userName" style="margin: 5px 0 0 0;"></h3>
             <div id="tierBadge" class="badge" style="display: none;"></div>
             <button class="btn-secondary" onclick="openManualModal()" style="margin-top: 10px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 13px;">📖 อ่านคู่มือและเงื่อนไขการใช้งาน</button>
+            <button class="btn-secondary" onclick="openQrModal()" style="margin-top: 8px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 13px;">📱 แสดง QR Code ให้คนนอกสแกนลงชื่อ</button>
             
             <div id="mainForm" style="text-align: left; margin-top: 20px;">
                 <div style="font-size: 14px; font-weight: bold;">👥 เพิ่มชื่อเพื่อนที่พ่วงมาด้วย:</div>
@@ -170,6 +181,21 @@
                 <button onclick="fetchHistory()" style="background: var(--admin); color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ค้นหา</button>
             </div>
             <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
+            <button id="applyPenaltyBtn" onclick="applyPenalty()" style="display:none; background:#ef4444; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">🚨 ปรับคนค้างจ่าย 100 บ.</button>
+        </div>
+
+        <div class="card" style="border: 2px solid #fbbf24;" id="vipManageCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #d97706;">👑 จัดการสมาชิก VIP</h4>
+                <button onclick="loadVipData(this)" class="admin-action-btn" style="background: #f59e0b; margin: 0; padding: 8px 12px;">🔄 โหลดรายชื่อ</button>
+            </div>
+            <div id="vipContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #fcd34d; padding-top: 10px;">
+                <input type="text" id="vipSearchInput" placeholder="🔍 พิมพ์ค้นหาชื่อสมาชิก..." onkeyup="filterVipList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box;">
+                <h5 style="margin: 10px 0 5px 0; color: #ef4444;">❌ หมดอายุ (รอต่ออายุ)</h5>
+                <div id="vipExpiredList" style="font-size: 14px; color: #6b7280; max-height: 250px; overflow-y: auto; background: #fef2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px;"></div>
+                <h5 style="margin: 10px 0 5px 0; color: #16a34a;">✅ ต่ออายุแล้ว (เดือนนี้)</h5>
+                <div id="vipActiveList" style="font-size: 14px; color: #6b7280; max-height: 200px; overflow-y: auto; background: #f0fdf4; padding: 10px; border-radius: 8px;"></div>
+            </div>
         </div>
 
         <div class="card" style="border: 2px dashed var(--admin);" id="walkInCard">
@@ -181,6 +207,7 @@
                         <option value="NORMAL">รายวัน (20 บ.)</option>
                         <option value="STUDENT">นักศึกษา (ฟรี)</option>
                         <option value="VIP">รายเดือน (ฟรี)</option>
+                        <option value="YEARLY">รายปี (ฟรี)</option>
                     </select>
                     <select id="walkInStatusSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
                         <option value="UNPAID">❌ ยังไม่จ่าย</option>
@@ -234,33 +261,73 @@
         <div style="font-size: 14px; color: #4b5563; line-height: 1.6;">
             <h4 style="margin: 15px 0 5px 0; color: #1f2937;">🏸 1. การลงชื่อเข้าสนาม</h4>
             <ul style="padding-left: 20px; margin-top: 0;">
-                <li>กดปุ่ม <b>"🟢 ยืนยันการลงชื่อ"</b> ทุกครั้งที่มาตีแบด</li>
+                <li><span style="color: #dc2626; font-weight: bold;">ต้องกดเช็คอิน "ก่อน" ลงสนามทุกครั้ง หากแอดมินตรวจพบว่าลงเล่นแต่ไม่มีชื่อ ขอปรับ 100 บาททันที!</span></li>
                 <li>หากพาเพื่อนมาด้วย ให้กด <b>"➕ พาเพื่อนมาด้วย"</b> แล้วพิมพ์ชื่อเพื่อน</li>
             </ul>
             <h4 style="margin: 15px 0 5px 0; color: #1f2937;">💸 2. การชำระเงิน (20 บาท/ท่าน)</h4>
             <ul style="padding-left: 20px; margin-top: 0;">
                 <li>ยอดเงินของท่านและเพื่อนจะถูกคำนวณรวมกันอัตโนมัติ</li>
                 <li>แนบรูปสลิป หรือหากจ่ายเงินสดให้พิมพ์ในช่องหมายเหตุว่า <b>"จ่ายสด"</b> แล้วกดส่งข้อมูล</li>
-                <li>ระบบจะปรับสถานะเป็น <b>"✅ จ่ายแล้ว"</b> ทันที (แอดมินจะเข้าตรวจสลิปย้อนหลัง หากพบว่าสลิปไม่ถูกต้องยอดหนี้จะเด้งกลับมา)</li>
+                <li>ระบบจะปรับสถานะเป็น "✅ จ่ายแล้ว" ทันที (แอดมินจะเข้าตรวจสลิปย้อนหลัง)</li>
+                <li style="color: #dc2626; font-weight: bold; margin-top: 5px;">🚨 สำคัญมาก: หากค้างชำระข้ามวัน (เกิน 12:00 น. ของวันถัดไป) จะถูกปรับ 100 บาท ทันที!</li>
             </ul>
-            <h4 style="margin: 15px 0 5px 0; color: #1f2937;">⭐ 3. สิทธิ์นักศึกษา / รายเดือน</h4>
+            <h4 style="margin: 15px 0 5px 0; color: #1f2937;">⭐ 3. สิทธิ์นักศึกษา / รายเดือน / รายปี</h4>
             <ul style="padding-left: 20px; margin-top: 0;">
-                <li>ท่านจะได้สิทธิ์ตีฟรี ก็ต่อเมื่อ <b>ลงชื่อผ่านเครื่องของตัวเองเท่านั้น</b></li>
+                <li><span style="color: #dc2626; font-weight: bold;">ท่านจะได้สิทธิ์ตีฟรี ก็ต่อเมื่อ "ลงชื่อผ่านเครื่องของตัวเองเท่านั้น" (ห้ามฝากเพื่อนเช็คอิน)</span></li>
                 <li>หากท่านพาเพื่อนมาด้วย เพื่อนจะถูกคิดราคาปกติเสมอ</li>
             </ul>
-            <p style="color: #ea580c; font-weight: bold; text-align: center; background: #fff7ed; padding: 10px; border-radius: 8px; margin-bottom: 0;">🙏 ขอความร่วมมือเคลียร์ยอดค้างชำระก่อนลงสนาม ขอให้สนุกกับการตีแบดครับ!</p>
+            <p style="color: #991b1b; font-weight: bold; text-align: center; background: #fee2e2; border: 1px solid #f87171; padding: 10px; border-radius: 8px; margin-bottom: 0;">🚨 ย้ำ! กรุณาเช็คชื่อก่อนลงสนาม และห้ามค้างจ่ายข้ามวันเด็ดขาด เพื่อหลีกเลี่ยงการโดนปรับ 100 บาทนะครับ 🙏</p>
         </div>
         <button onclick="closeManualModal()" class="btn" style="margin-top:15px; border-radius: 20px;">✅ เข้าใจและยอมรับเงื่อนไข</button>
     </div>
 </div>
 
+<!-- ป๊อปอัปต่ออายุ VIP -->
+<div id="vipRenewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:3000; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box;">
+    <div class="card" style="width: 100%; max-width: 400px; margin: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+        <h4 id="vipRenewName" style="margin-top:0; color:var(--admin); border-bottom: 2px dashed #e5e7eb; padding-bottom: 10px;">ต่ออายุสมาชิก</h4>
+        <label style="font-weight: bold; font-size: 14px;">ประเภทสิทธิ์:</label>
+        <select id="vipRenewTier" style="width:100%; padding:12px; margin: 8px 0 15px; border-radius:8px; border: 1px solid #d1d5db; font-size: 15px;">
+            <option value="รายเดือน">รายเดือน (1 เดือน)</option>
+            <option value="รายปี">รายปี (12 เดือน)</option>
+        </select>
+        <label style="font-weight: bold; font-size: 14px;">เริ่มนับตั้งแต่เดือน:</label>
+        <input type="month" id="vipRenewMonth" style="width:100%; padding:12px; margin: 8px 0 15px; border-radius:8px; border: 1px solid #d1d5db; font-size: 15px;">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-secondary" onclick="document.getElementById('vipRenewModal').style.display='none'">ยกเลิก</button>
+            <button class="btn" onclick="submitRenewVip(this)" style="margin-top:10px;">✅ ยืนยันต่ออายุ</button>
+        </div>
+    </div>
+</div>
+
+<!-- ป๊อปอัป QR Code สำหรับคนนอกกลุ่ม -->
+<div id="qrModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:3000; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box;" onclick="if(event.target === this) document.getElementById('qrModal').style.display='none';">
+    <div class="card fade-in" style="width: 100%; max-width: 350px; margin: 0; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+        <h4 style="margin-top:0; color:var(--primary-dark); border-bottom: 2px dashed #e5e7eb; padding-bottom: 10px;">📱 สแกนเพื่อลงชื่อเข้าสนาม</h4>
+        <p style="font-size: 14px; color: #4b5563; margin-bottom: 15px;">สำหรับเพื่อนที่ไม่ได้อยู่ในกลุ่มไลน์<br>ให้สแกน QR Code นี้เพื่อเข้าแอปครับ</p>
+        <!-- ใช้ API สร้าง QR Code จากลิงก์ LIFF ของคุณอัตโนมัติ -->
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://liff.line.me/2010144915-M3je0urZ" alt="QR Code" style="width: 220px; height: 220px; margin: 0 auto; border-radius: 10px; border: 2px solid #e5e7eb; padding: 10px; background: white;">
+        <a href="https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=https://liff.line.me/2010144915-M3je0urZ" target="_blank" download="Badminton_QR.png" class="btn-secondary" style="display: block; text-decoration: none; color: #1d4ed8; margin-top: 15px; font-size: 14px; background: #eff6ff; border-color: #bfdbfe;">💾 บันทึกรูป QR Code (ชัดพิเศษ)</a>
+        <button class="btn" onclick="document.getElementById('qrModal').style.display='none'" style="margin-top:10px;">❌ ปิดหน้าต่าง</button>
+    </div>
+</div>
+
 <script>
+    // 🚨 Global Error Listener (ดักจับ JS แตกนอกเหนือจาก try-catch)
+    window.addEventListener('error', function(e) {
+        console.error("[GLOBAL_ERR] ข้อผิดพลาดระบบ:", e.error || e.message);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        console.error("[GLOBAL_PROMISE_ERR] การเชื่อมต่อถูกปฏิเสธ:", e.reason);
+    });
+
     const MY_LIFF_ID = "2010144915-M3je0urZ"; 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXlzflIRUyuXB2SPwuG64OnglXKlcljR2cZwXXB4m__HVPbxW2xwSu1tSQrvgFG3SZxQ/exec";
 
     let userUid = ""; let userDisplayName = "";
     let myTierType = "NORMAL"; let baseCost = 20; let isAdminGlobal = false;
     let lastDashFetchTime = 0; let currentViewDate = ""; let globalUnpaidList = [];
+    let globalVipList = [];
     let currentModalActiveRow = null; let personalDebtTracker = 0;
 
     function getApiUrl() { return GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime(); }
@@ -286,8 +353,15 @@
                 
                 document.getElementById('loadingSec').style.display = 'none';
                 document.getElementById('checkinTab').style.display = 'block';
+                
+                // เด้งคู่มืออัตโนมัติหากยังไม่เคยกดรับทราบเงื่อนไข
+                if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); }
             } else liff.login();
-        } catch (err) { showToast("🏸 สัญญาณหน้าสนามอ่อน รีเฟรชไลน์หรือปิดเปิดใหม่นะครับ", "error"); }
+        } catch (err) { 
+            console.error("[INIT_01] LIFF/System Init Error:", err);
+            showToast("🏸 โหลดระบบไม่สำเร็จ กรุณาปิดหน้าต่างแล้วเข้าใหม่ [INIT_01]", "error"); 
+            document.getElementById('loadingSec').innerHTML = '<div style="font-size:40px; margin-bottom:10px;">⚠️</div><p style="color:#ef4444; font-weight:bold;">โหลดระบบไม่สำเร็จ</p><p style="font-size:13px; color:#6b7280;">กรุณาเช็คอินเทอร์เน็ต ปิดแอป LINE แล้วลองใหม่<br>รหัสอ้างอิง: [INIT_01]</p>';
+        }
     }
     main();
 
@@ -313,7 +387,11 @@
                 } catch(e) { localStorage.removeItem('badminton_friends_' + userUid); }
                 calculateDynamicCost();
             }
-        } catch(e) { showToast("🔄 เซสชั่นหมดอายุ กำลังเชื่อมต่อระบบให้ใหม่ครับ...", "error"); setTimeout(()=>location.reload(), 1500); }
+        } catch(e) { 
+            console.error("[SYNC_01] Fetch Personal State Error:", e);
+            showToast("🔄 สัญญาณขาดหาย กำลังพยายามเชื่อมต่อใหม่... [SYNC_01]", "error"); 
+            setTimeout(()=>location.reload(), 2000); 
+        }
     }
 
     function addFriendInput(valueStr) {
@@ -363,7 +441,7 @@
             let fStatusIcon = fStatus.includes("✅") ? "✅" : (fStatus.includes("⏳") ? "⏳" : "❌");
             html += `<div class="personal-row"><span>เพื่อนพ่วง: ${fName}</span><b>${fStatus} ${fStatusIcon}</b></div>`; 
         });
-        area.innerHTML = html;
+        area.innerHTML = `<div class="fade-in">${html}</div>`;
         
         personalDebtTracker = res.costToday;
         document.getElementById('dashTotalCost').innerText = personalDebtTracker;
@@ -395,6 +473,15 @@
         document.getElementById('checkinTab').style.display = (target === 'checkin') ? 'block' : 'none';
         document.getElementById('dashboardTab').style.display = (target === 'dashboard') ? 'block' : 'none';
         document.getElementById('adminTab').style.display = (target === 'admin') ? 'block' : 'none';
+        ['checkin', 'dashboard', 'admin'].forEach(t => {
+            let tab = document.getElementById(t + 'Tab');
+            if (t === target) {
+                tab.style.display = 'block';
+                tab.classList.remove('fade-in');
+                void tab.offsetWidth; // Trigger Reflow (บังคับให้แอนิเมชันเริ่มใหม่)
+                tab.classList.add('fade-in');
+            } else tab.style.display = 'none';
+        });
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('tab' + target.charAt(0).toUpperCase() + target.slice(1) + 'Btn').classList.add('active');
         if(target === 'dashboard') loadDashboardData();
@@ -414,7 +501,10 @@
         if (type === 'MAIN') localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
 
         try {
-            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "checkIn", checkInType: type, uid: userUid, displayName: userDisplayName, friends: friendsArray }) });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // จับเวลา 15 วิ ถ้าเซิร์ฟเวอร์ไม่ตอบ ให้เด้งออกเลย
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "checkIn", checkInType: type, uid: userUid, displayName: userDisplayName, friends: friendsArray }), signal: controller.signal });
+            clearTimeout(timeoutId);
             let result = await res.json();
             
             if (result.status === "error") { 
@@ -429,7 +519,9 @@
             }
             await refreshPersonalState();
         } catch (error) { 
-            showToast("🏸 การเชื่อมต่อขัดข้อง ลองกดอีกรอบครับ", "error"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
+            console.error("[CHK_01] Check-in Error:", error);
+            showToast("⚠️ การเชื่อมต่อขัดข้อง กรุณาเช็คเน็ตแล้วกดอีกครั้ง [CHK_01]", "error"); 
+            btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
             document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); 
         }
     }
@@ -495,7 +587,11 @@
                 await refreshPersonalState();
                 showToast("✅ อัปโหลดสลิปสำเร็จ");
             } else { throw new Error(result.message); }
-        } catch (e) { btn.disabled = false; btn.innerText = "❌ ส่งล้มเหลว (เน็ตหลุด) กดลองใหม่ครับ"; }
+        } catch (e) { 
+            console.error("[PAY_01] Payment Confirm Error:", e);
+            showToast("⚠️ ส่งข้อมูลไม่สำเร็จ อาจเกิดจากเน็ตหลุด ลองกดส่งใหม่ครับ [PAY_01]", "error");
+            btn.disabled = false; btn.innerText = "❌ ส่งล้มเหลว ลองกดใหม่"; 
+        }
     }
 
     async function loadDashboardData() {
@@ -511,13 +607,18 @@
                 if (result.data.length === 0) document.getElementById('emptyDashTxt').style.display = 'block';
                 else {
                     document.getElementById('emptyDashTxt').style.display = 'none';
-                    result.data.forEach(item => { 
-                        let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
-                        tbody.innerHTML += `<tr><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
+                let htmlStr = "";
+                result.data.forEach((item, idx) => { 
+                    let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ทีละ 0.05 วินาที
+                    htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0;"><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
                     });
+                    tbody.innerHTML = htmlStr;
                 }
             }
-        } catch (e) {} finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
+        } catch (e) { 
+            console.error("[DASH_01] Load Dashboard Error:", e);
+            showToast("⚠️ โหลดรายชื่อไม่สำเร็จ ลองกดอัปเดตอีกครั้ง [DASH_01]", "error");
+        } finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
     }
 
     function copyAcc() { navigator.clipboard.writeText("020219081907"); showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success"); }
@@ -526,6 +627,8 @@
         const btn = document.getElementById('refreshAdminBtn');
         if (btn) { btn.disabled = true; btn.innerText = "⏳ กำลังโหลด..."; }
         currentViewDate = ""; document.getElementById('resetTodayBtn').style.display = "none"; document.getElementById('historyDateInput').value = "";
+        document.getElementById('applyPenaltyBtn').style.display = "none";
+        document.getElementById('vipContentArea').style.display = "none"; document.getElementById('vipSearchInput').value = "";
         document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
         document.getElementById('unpaidCardBox').style.display = "block";
         document.getElementById('walkInCard').style.display = "block";
@@ -576,6 +679,7 @@
                                     <div>
                                         <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับ</button>
                                         <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectPaySingle', this)">❌ ปฏิเสธ</button>
+                                        <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${m.time}', '${m.uid}', 'write_off', this)">🧹 ยกหนี้</button>
                                     </div>
                                 </div>`;
                             });
@@ -596,11 +700,13 @@
                         } else { // Individual, no slip
                             const u = group.members[0];
                             let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${u.note}</div>` : '';
-                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;"><button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button></div></div>`;
+                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;"><button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
                         }
                     }
-                    unpaidArea.innerHTML = upHTML || "ไม่มีรายการค้างชำระ";
+                unpaidArea.innerHTML = upHTML ? `<div class="fade-in">${upHTML}</div>` : "ไม่มีรายการค้างชำระ";
                 }
+                
+                document.getElementById('applyPenaltyBtn').style.display = (!isToday && r.stats.unpaid > 0) ? "block" : "none";
 
                 let allowEditHistory = false;
                 if (!isToday && currentViewDate !== "") {
@@ -613,31 +719,110 @@
                 r.todayList.forEach(a => {
                     let isFriend = a.uid.includes("FRIEND_OF_"); let promoteBtn = "";
                     if (!isFriend && a.name !== "โอนแทนเพื่อน") {
-                        if (a.tierType === "STUDENT") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดนักศึกษา</button>` : '';
-                        else if (a.tierType === "VIP") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลด VIP</button>` : '';
-                        else { promoteBtn = isToday ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 สิทธิ์ นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ สิทธิ์ VIP</button>` : ''; }
+                        if (a.tierType === "STUDENT") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดออก</button>` : '';
+                        else if (a.tierType === "VIP" || a.tierType === "YEARLY") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดสิทธิ์</button>` : '';
+                        else { promoteBtn = isToday ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_yearly', this)">👑 รายปี</button>` : ''; }
                     }
-                    let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button>` : '';
+                    let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${a.time}', '${a.uid}', 'write_off', this)">🧹 ยกหนี้</button>` : '';
                     let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}')">📄 ดูสลิป</button>` : '';
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
                     let revertBtn = (isToday && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย")) ? `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>` : '';
                     allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
-                document.getElementById('adminAllArea').innerHTML = allHTML || "ยังไม่มีข้อมูล";
+            document.getElementById('adminAllArea').innerHTML = allHTML ? `<div class="fade-in">${allHTML}</div>` : "ยังไม่มีข้อมูล";
             }
-        } catch (e) { showToast("ดึงข้อมูลล้มเหลว", "error"); }
+        } catch (e) { 
+            console.error("[ADM_01] Render Admin UI Error:", e);
+            showToast("⚠️ ดึงข้อมูลแอดมินล้มเหลว ลองรีเฟรชใหม่ [ADM_01]", "error"); 
+            document.getElementById('adminAllArea').innerHTML = '<div style="color:#ef4444; padding:10px; text-align:center;">โหลดข้อมูลไม่สำเร็จ (รหัสอ้างอิง: [ADM_01])</div>';
+            if (isToday) document.getElementById('adminUnpaidArea').innerHTML = '<div style="color:#ef4444; padding:10px; text-align:center;">โหลดข้อมูลไม่สำเร็จ</div>';
+        }
     }
 
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
         if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return;
+        if (manageType === 'write_off' && !confirm("⚠️ ยืนยันการยกยอดหนี้สูญให้รายการนี้? (ยอดจะกลายเป็น 0 บาท)")) return;
         btnElement.disabled = true; btnElement.innerText = "⏳...";
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
             let r = await res.json();
             if (r.status === "success") { btnElement.innerText = "✅ สำเร็จ"; closeSlipModal(); setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); } 
             else { showToast(r.message, "error"); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; }
-        } catch (e) { showToast("เชื่อมต่อล้มเหลว", "error"); btnElement.disabled = false; }
+        } catch (e) { 
+            console.error("[ACT_01] Admin Action Error:", e);
+            showToast("⚠️ เชื่อมต่อล้มเหลว กรุณาลองใหม่ [ACT_01]", "error"); 
+            btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด";
+        }
     }
+
+    async function loadVipData(btn) {
+        if(btn) { btn.disabled = true; btn.innerText = "⏳..."; }
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getVipData", uid: userUid }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                globalVipList = r.data;
+                document.getElementById('vipContentArea').style.display = 'block';
+                renderVipList();
+            } else { showToast(r.message, "error"); }
+        } catch(e) { console.error("[VIP_01] Load VIP Error:", e); showToast("⚠️ โหลดข้อมูล VIP ล้มเหลว [VIP_01]", "error"); } 
+        finally { if(btn) { btn.disabled = false; btn.innerText = "🔄 โหลดรายชื่อ"; } }
+    }
+
+    function renderVipList() {
+        let searchTxt = document.getElementById('vipSearchInput').value.toLowerCase();
+        let expHtml = ""; let actHtml = "";
+        globalVipList.forEach(v => {
+            let safeNameForJS = v.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            if (searchTxt && !v.name.toLowerCase().includes(searchTxt)) return;
+            if (v.isExpired) {
+                let badge = v.tierType === 'YEARLY' ? `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายปี</span>` : '';
+                expHtml += `<div class="admin-sub-item" style="padding: 8px 0;">
+                    <div><b style="color:#ef4444;">${v.name}</b> ${badge} <div style="font-size:11px;">(ต่ออายุล่าสุด: ${v.date || 'ไม่มีประวัติ'})</div></div>
+                    <div><button class="admin-action-btn" style="background:#f59e0b;" onclick="openRenewModal('${v.uid}', '${safeNameForJS}', '${v.tierType}', '${v.date}')">🔄 ต่ออายุ</button><button class="admin-action-btn" style="background:#ef4444;" onclick="removeVip('${v.uid}', '${safeNameForJS}', this)">🗑️</button></div>
+                </div>`;
+            } else {
+                let badge = v.tierType === 'YEARLY' ? `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายปี</span>` : '';
+                actHtml += `<div class="admin-sub-item" style="padding: 8px 0;">
+                    <div><b style="color:#16a34a;">${v.name}</b> ${badge} <div style="font-size:11px;">(ต่ออายุเมื่อ: ${v.date})</div></div>
+                    <span class="icon-badge">✅</span>
+                </div>`;
+            }
+        });
+        document.getElementById('vipExpiredList').innerHTML = expHtml || "ไม่มีรายการ"; document.getElementById('vipActiveList').innerHTML = actHtml || "ไม่มีรายการ";
+    }
+    function filterVipList() { renderVipList(); }
+
+    let currentRenewUid = ""; let currentRenewName = "";
+    function openRenewModal(u, n, tierType, currentMDate) {
+        currentRenewUid = u; currentRenewName = n;
+        document.getElementById('vipRenewName').innerText = "ต่ออายุ: " + n;
+        document.getElementById('vipRenewTier').value = (tierType === 'YEARLY') ? 'รายปี' : 'รายเดือน';
+        let d = new Date();
+        if (currentMDate && currentMDate !== "-") { let parts = currentMDate.split("-"); if(parts.length >= 2) d = new Date(parts[0], parts[1]-1); }
+        document.getElementById('vipRenewMonth').value = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2, '0');
+        document.getElementById('vipRenewModal').style.display = 'flex';
+    }
+
+    function submitRenewVip(btn) {
+        let t = document.getElementById('vipRenewTier').value;
+        let m = document.getElementById('vipRenewMonth').value;
+        if (!m) return showToast("กรุณาเลือกเดือนเริ่มต้น", "error");
+        document.getElementById('vipRenewModal').style.display = 'none';
+        handleVipAction("renewVip", currentRenewUid, { newTier: t, startDate: m }, btn, null, `✅ ต่ออายุ ${currentRenewName} สำเร็จ!`);
+    }
+
+    async function handleVipAction(actionName, tUid, payloadExtra, btn, confirmMsg, successMsg) {
+        if (confirmMsg && !confirm(confirmMsg)) return;
+        let oldTxt = btn ? btn.innerText : ""; 
+        if(btn) { btn.disabled = true; btn.innerText = "⏳..."; }
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: actionName, uid: userUid, targetUid: tUid, ...payloadExtra }) });
+            let r = await res.json();
+            if (r.status === "success") { showToast(successMsg, "success"); loadVipData(); } else { showToast(r.message, "error"); if(btn){btn.disabled = false; btn.innerText = oldTxt;} }
+        } catch(e) { console.error("[VIP_02] Action Error:", e); showToast("⚠️ เชื่อมต่อล้มเหลว [VIP_02]", "error"); if(btn){btn.disabled = false; btn.innerText = oldTxt;} }
+    }
+    function removeVip(u, n, b) { handleVipAction("removeVip", u, {}, b, `⚠️ ยืนยัน "ลบสิทธิ์ VIP ถาวร" ของ "${n}" ใช่หรือไม่?\n(หากลบไปแล้ว ต้องไปเพิ่มให้ใหม่ในหน้ากระดาน)`, `🗑️ ลบสิทธิ์ ${n} ถาวรแล้ว`); }
 
     async function submitWalkIn(btn) {
         let wName = document.getElementById('walkInNameInput').value.trim();
@@ -656,7 +841,29 @@
                 document.getElementById('walkInNameInput').value = "";
                 loadAdminData();
             } else { showToast(r.message || "ผิดพลาด", "error"); }
-        } catch(e) { showToast("เชื่อมต่อล้มเหลว", "error"); }
+        } catch(e) { 
+            console.error("[WLK_01] Submit Walk-In Error:", e);
+            showToast("⚠️ เชื่อมต่อล้มเหลว กรุณาลองใหม่ [WLK_01]", "error"); 
+        }
+        finally { btn.disabled = false; btn.innerText = oldText; }
+    }
+
+    async function applyPenalty() {
+        if (!confirm("⚠️ ยืนยันการปรับคนค้างจ่ายในหน้านี้เป็น 100 บาท?\n\n(ระบบจะเปลี่ยนยอดเงินเป็น 100 บาท และอัปเกรดเป็น 'รายเดือน' ทันทีเฉพาะคนที่มี LINE ID)")) return;
+        const btn = document.getElementById('applyPenaltyBtn');
+        let oldText = btn.innerText;
+        btn.disabled = true; btn.innerText = "⏳ กำลังดำเนินการ...";
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminApplyPenalty", uid: userUid, targetDate: currentViewDate }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                showToast(`✅ ปรับสำเร็จ ${r.count} รายการ`, "success");
+                fetchHistory(); // โหลดหน้าใหม่
+            } else { showToast(r.message, "error"); }
+        } catch(e) { 
+            console.error("[PEN_01] Apply Penalty Error:", e);
+            showToast("⚠️ เชื่อมต่อล้มเหลว กรุณาลองใหม่ [PEN_01]", "error"); 
+        }
         finally { btn.disabled = false; btn.innerText = oldText; }
     }
 
@@ -680,9 +887,19 @@
     }
     
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
-    function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
+    function closeManualModal() { 
+        document.getElementById('manualModal').style.display = 'none'; 
+        if (userUid) localStorage.setItem('manual_accepted_' + userUid, 'true'); // บันทึกว่าอ่านแล้วจะได้ไม่เด้งซ้ำ
+    }
 
-    function closeSlipModal() { document.getElementById('slipModal').style.display = 'none'; document.getElementById('modalImg').src = ""; currentModalActiveRow = null; }
+    function closeSlipModal() { 
+        let imgEl = document.getElementById('modalImg');
+        imgEl.onload = null; imgEl.onerror = null; // ปิดก๊อก Event รูปภาพเก่าที่กำลังโหลดค้างอยู่
+        document.getElementById('slipModal').style.display = 'none'; 
+        imgEl.src = ""; currentModalActiveRow = null; 
+    }
+
+    function openQrModal() { document.getElementById('qrModal').style.display = 'flex'; }
 
     function copyDebtList() {
         if (globalUnpaidList.length === 0) return;
