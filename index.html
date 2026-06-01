@@ -281,8 +281,14 @@
         let area = document.getElementById('personalListArea');
         let statusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : "❌");
         
-        let html = `<div class="personal-row"><span>คุณ (${res.tierName})</span><b>${res.userStatus} ${statusIcon}</b></div>`;
-        res.friends.forEach((f) => { html += `<div class="personal-row"><span>เพื่อนพ่วง: ${f}</span><b>${res.userStatus} ${statusIcon}</b></div>`; });
+        let myStatusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : "❌");
+        let html = `<div class="personal-row"><span>คุณ (${res.tierName})</span><b>${res.userStatus} ${myStatusIcon}</b></div>`;
+        res.friends.forEach((f) => { 
+            let fName = typeof f === 'string' ? f : f.name;
+            let fStatus = typeof f === 'string' ? res.userStatus : f.status;
+            let fStatusIcon = fStatus.includes("✅") ? "✅" : (fStatus.includes("⏳") ? "⏳" : "❌");
+            html += `<div class="personal-row"><span>เพื่อนพ่วง: ${fName}</span><b>${fStatus} ${fStatusIcon}</b></div>`; 
+        });
         area.innerHTML = html;
         
         personalDebtTracker = res.costToday;
@@ -419,7 +425,7 @@
                 else {
                     document.getElementById('emptyDashTxt').style.display = 'none';
                     result.data.forEach(item => { 
-                        let statusIcon = item.status.includes("✅ จ่ายแล้ว") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : "❌"));
+                        let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
                         tbody.innerHTML += `<tr><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
                     });
                 }
@@ -471,7 +477,10 @@
                             group.members.forEach(m => {
                                 membersHtml += `<div class="admin-sub-item">
                                     <span>${m.name} (${m.cost} บ.)</span>
-                                    <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับเงิน</button>
+                                    <div>
+                                        <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับ</button>
+                                        <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectPaySingle', this)">❌ ปฏิเสธ</button>
+                                    </div>
                                 </div>`;
                             });
 
@@ -515,7 +524,8 @@
                     let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button>` : '';
                     let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}')">📄 ดูสลิป</button>` : '';
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold;"> [หมายเหตุ: ${a.note}]</span>` : '';
-                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn}</div>`;
+                    let revertBtn = (isToday && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย")) ? `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>` : '';
+                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
                 document.getElementById('adminAllArea').innerHTML = allHTML || "ยังไม่มีข้อมูล";
             }
