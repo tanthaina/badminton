@@ -117,6 +117,7 @@
             <img id="userImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" style="width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #e5e7eb;">
             <h3 id="userName" style="margin: 5px 0 0 0;"></h3>
             <div id="tierBadge" class="badge" style="display: none;"></div>
+            <button class="btn-secondary" onclick="openManualModal()" style="margin-top: 10px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 13px;">📖 อ่านคู่มือและเงื่อนไขการใช้งาน</button>
             
             <div id="mainForm" style="text-align: left; margin-top: 20px;">
                 <div style="font-size: 14px; font-weight: bold;">👥 เพิ่มชื่อเพื่อนที่พ่วงมาด้วย:</div>
@@ -224,6 +225,33 @@
          <button id="modalApproveBtn" style="background:#16a34a; color:white; border:none; padding:12px 30px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; width:100%; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">✅ สลิปถูกต้อง ยืนยันเงินเข้า</button>
     </div>
     <button onclick="closeSlipModal()" style="margin-top:15px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">❌ ปิดหน้าต่าง</button>
+</div>
+
+<!-- ป๊อปอัปคู่มือการใช้งาน -->
+<div id="manualModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:3000; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box;">
+    <div style="background:white; width: 100%; max-width: 450px; max-height: 85vh; border-radius: 16px; padding: 20px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h3 style="margin-top:0; color:var(--primary-dark); text-align: center; border-bottom: 2px dashed #e5e7eb; padding-bottom: 10px;">📖 คู่มือและเงื่อนไข</h3>
+        <div style="font-size: 14px; color: #4b5563; line-height: 1.6;">
+            <h4 style="margin: 15px 0 5px 0; color: #1f2937;">🏸 1. การลงชื่อเข้าสนาม</h4>
+            <ul style="padding-left: 20px; margin-top: 0;">
+                <li>กดปุ่ม <b>"🟢 ยืนยันการลงชื่อ"</b> ทุกครั้งที่มาตีแบด</li>
+                <li>หากพาเพื่อนมาด้วย ให้กด <b>"➕ พาเพื่อนมาด้วย"</b> แล้วพิมพ์ชื่อเพื่อน</li>
+            </ul>
+            <h4 style="margin: 15px 0 5px 0; color: #1f2937;">💸 2. การชำระเงิน (20 บาท/ท่าน)</h4>
+            <ul style="padding-left: 20px; margin-top: 0;">
+                <li>ยอดเงินของท่านและเพื่อนจะถูกคำนวณรวมกันอัตโนมัติ</li>
+                <li>แนบรูปสลิป หรือหากจ่ายเงินสดให้พิมพ์ในช่องหมายเหตุว่า <b>"จ่ายสด"</b> แล้วกดส่งข้อมูล</li>
+                <li>ระบบจะปรับสถานะเป็น <b>"✅ จ่ายแล้ว"</b> ทันที (แอดมินจะเข้าตรวจสลิปย้อนหลัง หากพบว่าสลิปไม่ถูกต้องยอดหนี้จะเด้งกลับมา)</li>
+            </ul>
+            <h4 style="margin: 15px 0 5px 0; color: #1f2937;">⭐ 3. สิทธิ์นักศึกษา / รายเดือน</h4>
+            <ul style="padding-left: 20px; margin-top: 0;">
+                <li>ท่านจะได้สิทธิ์ตีฟรี ก็ต่อเมื่อ <b>ลงชื่อผ่านเครื่องของตัวเองเท่านั้น</b></li>
+                <li>หากท่านพาเพื่อนมาด้วย เพื่อนจะถูกคิดราคาปกติเสมอ</li>
+            </ul>
+            <p style="color: #ea580c; font-weight: bold; text-align: center; background: #fff7ed; padding: 10px; border-radius: 8px; margin-bottom: 0;">🙏 ขอความร่วมมือเคลียร์ยอดค้างชำระก่อนลงสนาม ขอให้สนุกกับการตีแบดครับ!</p>
+        </div>
+        <button onclick="closeManualModal()" class="btn" style="margin-top:15px; border-radius: 20px;">✅ เข้าใจและยอมรับเงื่อนไข</button>
+    </div>
 </div>
 
 <script>
@@ -651,6 +679,9 @@
         } else { window.open(driveUrl, '_blank'); } 
     }
     
+    function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
+    function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
+
     function closeSlipModal() { document.getElementById('slipModal').style.display = 'none'; document.getElementById('modalImg').src = ""; currentModalActiveRow = null; }
 
     function copyDebtList() {
