@@ -25,7 +25,7 @@
         /* 🚨 กันรีโหลดเวลารูดจอลงแรงๆ (Pull-to-Refresh Trap Shield) */
         *, *::before, *::after { box-sizing: border-box; }
         html { max-width: 100vw; overflow-x: hidden; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-bottom: 150px; max-width: 100vw; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-bottom: 150px; width: 100%; max-width: 100vw; overflow-x: hidden; position: relative; -webkit-overflow-scrolling: touch; }
         .tabs { display: flex; background: #e5e7eb; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .tab-btn { flex: 1; padding: 15px 5px; text-align: center; font-weight: bold; background: #e5e7eb; border: none; cursor: pointer; font-size: 14px; color: #6b7280; transition: 0.2s; touch-action: manipulation; }
         .tab-btn.active { background: var(--card); color: var(--primary-dark); border-bottom: 3px solid var(--primary); }
@@ -546,13 +546,13 @@
         let reader = new FileReader();
         reader.onload = function(e) {
             let img = new Image();
-        let fallbackTimer = setTimeout(() => {
-            showToast("⚠️ การประมวลผลรูปใช้เวลานานเกินไป กรุณาลองใหม่", "error");
-            btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
-        }, 8000);
+            let fallbackTimer = setTimeout(() => {
+                showToast("⚠️ การประมวลผลรูปใช้เวลานานเกินไป กรุณาลองใหม่", "error");
+                btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+            }, 8000);
 
             img.onload = function() {
-            clearTimeout(fallbackTimer);
+                clearTimeout(fallbackTimer);
                 let canvas = document.createElement('canvas'); let max_size = 600; 
                 let width = img.width; let height = img.height;
                 if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } } 
@@ -563,10 +563,10 @@
                 let compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
                 executePaymentConfirm(compressedBase64, noteSafe);
             };
-        img.onerror = function() { 
-            clearTimeout(fallbackTimer);
-            showToast("❌ ไฟล์สลิปชำรุดครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; 
-        };
+            img.onerror = function() { 
+                clearTimeout(fallbackTimer);
+                showToast("❌ ไฟล์สลิปชำรุดครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; 
+            };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -607,11 +607,11 @@
                 if (result.data.length === 0) document.getElementById('emptyDashTxt').style.display = 'block';
                 else {
                     document.getElementById('emptyDashTxt').style.display = 'none';
-                let htmlStr = "";
-                result.data.forEach((item, idx) => { 
+                    let htmlStr = "";
+                    result.data.forEach((item, idx) => { 
                         let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
-                    let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ทีละ 0.05 วินาที
-                    htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0;"><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
+                        let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ทีละ 0.05 วินาที
+                        htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0;"><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
                     });
                     tbody.innerHTML = htmlStr;
                 }
