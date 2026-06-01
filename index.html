@@ -24,8 +24,8 @@
         :root { --primary: #10b981; --primary-dark: #059669; --bg: #f4f6f9; --card: #ffffff; --text: #1f2937; --admin: #8b5cf6; }
         /* 🚨 กันรีโหลดเวลารูดจอลงแรงๆ (Pull-to-Refresh Trap Shield) */
         *, *::before, *::after { box-sizing: border-box; }
-        html { overflow-x: hidden; max-width: 100vw; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-bottom: 150px; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: none; max-width: 100vw; }
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-bottom: 150px; overscroll-behavior-y: none; }
         .tabs { display: flex; background: #e5e7eb; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .tab-btn { flex: 1; padding: 15px 5px; text-align: center; font-weight: bold; background: #e5e7eb; border: none; cursor: pointer; font-size: 14px; color: #6b7280; transition: 0.2s; touch-action: manipulation; }
         .tab-btn.active { background: var(--card); color: var(--primary-dark); border-bottom: 3px solid var(--primary); }
