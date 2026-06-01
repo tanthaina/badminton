@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏸 ระบบจัดการก๊วนแบดมินตัน</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        :root { --primary: #10b981; --primary-dark: #059669; --bg: #f4f6f9; --card: #ffffff; --text: #1f2937; --admin: #8b5cf6; }
+        /* 🚨 กันรีโหลดเวลารูดจอลงแรงๆ (Pull-to-Refresh Trap Shield) */
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-bottom: 150px; overflow-y: auto; overscroll-behavior-y: none; }
+        .tabs { display: flex; background: #e5e7eb; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .tab-btn { flex: 1; padding: 15px 5px; text-align: center; font-weight: bold; background: #e5e7eb; border: none; cursor: pointer; font-size: 14px; color: #6b7280; transition: 0.2s; touch-action: manipulation; }
+        .tab-btn.active { background: var(--card); color: var(--primary-dark); border-bottom: 3px solid var(--primary); }
+        .tab-btn#tabAdminBtn { display: none; color: var(--admin); } 
+        .tab-btn#tabAdminBtn.active { border-bottom: 3px solid var(--admin); color: var(--admin); }
+        
+        /* 🚨 เกราะกันซูมลั่นและ Visual Feedback */
+        .btn, .btn-secondary, .admin-action-btn, .remove-btn { touch-action: manipulation; transition: transform 0.1s; }
+        .btn:active, .btn-secondary:active, .admin-action-btn:active { transform: scale(0.96); }
+        
+        .container { padding: 15px; max-width: 500px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .btn { background-color: var(--primary); color: white; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 15px; }
+        .btn:disabled { background-color: #9ca3af; cursor: not-allowed; transform: none; }
+        .btn-secondary { background-color: #f3f4f6; color: #4b5563; padding: 10px; border: 1px dashed #d1d5db; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .friend-input-container { display: flex; align-items: center; margin-top: 10px; gap: 8px; }
+        input[type="text"], input[type="date"], input[type="file"] { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .remove-btn { background: #ef4444; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-weight: bold; }
+        
+        .account-box { background: #eff6ff; border: 2px dashed #3b82f6; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+        
+        .list-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        .list-table th, .list-table td { padding: 10px 5px; border-bottom: 1px solid #e5e7eb; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .admin-stat-box { display: flex; gap: 10px; margin-bottom: 15px; }
+        .stat-card { flex: 1; background: #f3f4f6; padding: 10px; border-radius: 10px; text-align: center; }
+        .stat-val { font-size: 20px; font-weight: bold; color: var(--admin); margin-top: 5px; }
+        .admin-action-btn { padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; color: white; margin-right: 5px; margin-top: 5px; display: inline-block;}
+        .badge { display: inline-block; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: 5px; }
+        .badge-vip { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+        .badge-student { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .icon-badge { font-size: 16px; margin-left: 5px; }
+        
+        #slipModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:2000; justify-content:center; align-items:center; flex-direction:column; }
+        #modalImg { max-width:90%; max-height:65%; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.5); object-fit: contain; }
+        .modal-loader { border: 4px solid #333; border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; position: absolute; z-index: -1; }
+        .personal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #e5e7eb; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="tabs" id="mainTabs">
+    <button class="tab-btn active" id="tabCheckinBtn" onclick="switchTab('checkin')">📝 ลงชื่อ / บิลของคุณ</button>
+    <button class="tab-btn" id="tabDashboardBtn" onclick="switchTab('dashboard')">👥 ใครมาบ้าง</button>
+    <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin'); loadAdminData();">🛠️ แอดมิน</button>
+</div>
+
+<div class="container">
+    <div id="loadingSec" class="card" style="text-align: center;">
+        <div class="loader"></div>
+        <p style="color:#6b7280; font-size:14px;">กำลังโหลดระบบ...</p>
+    </div>
+
+    <div id="checkinTab" style="display: none;">
+        
+        <div id="paymentSec" class="account-box" style="display: none;">
+            <p style="color: #1d4ed8; font-weight: bold; margin-top: 0; font-size: 15px;">💳 โอนเงินเข้าบัญชีก๊วนแบดมินตัน</p>
+            <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+                <span style="font-size: 13px; color: #4b5563;">ธนาคาร ธ.ก.ส.</span><br>
+                <strong style="font-size: 24px; color: #1e3a8a;">020219081907</strong>
+            </div>
+            <button onclick="copyAcc()" style="background:#3b82f6; color:white; border:none; padding:10px; border-radius:8px; width:100%; font-weight:bold; margin-bottom: 10px;">📋 คัดลอกเลขบัญชี</button>
+            
+            <div style="text-align: left; margin-top: 10px;">
+                <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
+                <input type="file" id="slipFileInput" accept="image/jpeg, image/png, image/webp" style="margin-top: 5px; background: white;">
+                
+                <label style="font-size: 13px; font-weight: bold; color: #374151; display:block; margin-top:10px;">✍️ หมายเหตุ (ถ้ามี):</label>
+                <input type="text" id="paymentNoteInput" placeholder="เช่น จ่ายสด, โอนรวม 2 คน, โอนเผื่อพี่ปุ๋ย" maxlength="100" style="margin-top: 5px; background: white;">
+            </div>
+            <div id="mixedStatusWarning" style="display:none; color:#ea580c; font-size:13px; font-weight:bold; margin-top:10px;">
+                ⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ
+            </div>
+            <button id="confirmPayBtn" onclick="processImageAndSubmit()" style="background:var(--primary); color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; margin-top: 15px;">✅ ส่งสลิปและบันทึกข้อมูล</button>
+        </div>
+
+        <div class="card" style="text-align: center;">
+            <img id="userImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" style="width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #e5e7eb;">
+            <h3 id="userName" style="margin: 5px 0 0 0;"></h3>
+            <div id="tierBadge" class="badge" style="display: none;"></div>
+            
+            <div id="mainForm" style="text-align: left; margin-top: 20px;">
+                <div style="font-size: 14px; font-weight: bold;">👥 เพิ่มชื่อเพื่อนที่พ่วงมาด้วย:</div>
+                <div id="friendsListArea"></div>
+                <button class="btn-secondary" id="addFriendBtn" onclick="addFriendInput('')">➕ พาเพื่อนมาด้วย</button>
+                
+                <div style="background: #f9fafb; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; font-weight: bold; text-align: center;">
+                    💰 ยอดเงินรวมเซสชั่นนี้: <span id="totalCostTxt" style="color: #ef4444; font-size: 20px;">20</span> บาท
+                </div>
+                <button class="btn" id="submitCheckInBtn" onclick="executeCheckIn('MAIN')">🟢 ยืนยันการลงชื่อเข้าสนาม</button>
+            </div>
+
+            <div id="personalDashboard" style="display: none; text-align: left; margin-top: 20px; border-top: 2px dashed #e5e7eb; padding-top: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--primary-dark);">📊 สถานะบิลของคุณวันนี้</h4>
+                <div id="personalListArea"></div>
+                
+                <div style="background: #fdf2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: bold;">
+                    💸 ยอดค้างชำระรวมทั้งหมดวันนี้: <span id="dashTotalCost" style="color:#dc2626; font-size: 20px;">0</span> บาท
+                </div>
+
+                <div style="margin-top:20px; border-top: 1px solid #e5e7eb; padding-top:15px;">
+                    <div style="font-size: 13px; font-weight: bold; color:#4b5563;">➕ มีเพื่อนตามมาทีหลังเพิ่มใช่ไหม?</div>
+                    <div id="lateFriendsArea"></div>
+                    <button class="btn-secondary" id="addLateFriendBtn" onclick="addLateFriendInput()" style="margin-top:5px; background: #fff;">➕ กดเพิ่มช่องชื่อเพื่อน</button>
+                    <button class="btn" id="submitLateBtn" onclick="executeCheckIn('LATE')" style="display:none; background:#8b5cf6; margin-top:10px; padding:10px; font-size:14px;">🟢 ยืนยันเพิ่มชื่อเพื่อนที่มาทีหลัง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardTab" style="display: none;">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: var(--primary-dark);">👥 นักกีฬา (12 ชม.)</h3>
+                <button id="refreshDashBtn" onclick="loadDashboardData()" class="admin-action-btn" style="background: var(--primary); margin: 0;">🔄 อัปเดต</button>
+            </div>
+            <table class="list-table">
+                <thead><tr style="background:#f9fafb;"><th style="width: 25%;">เวลา</th><th>รายชื่อ (สถานะ)</th></tr></thead>
+                <tbody id="dashboardTableBody"></tbody>
+            </table>
+            <div id="emptyDashTxt" style="padding: 20px; text-align: center; color: #9ca3af; display: none;">ยังไม่มีสมาชิกเข้าสนาม</div>
+        </div>
+    </div>
+
+    <div id="adminTab" style="display: none;">
+        <div class="card" style="border: 2px solid var(--admin);">
+            <h4 style="margin: 0 0 10px 0; color: var(--admin);">📅 ไทม์แมชชีน: ค้นหาประวัติย้อนหลัง</h4>
+            <div style="display: flex; gap: 8px;">
+                <input type="date" id="historyDateInput">
+                <button onclick="fetchHistory()" style="background: var(--admin); color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ค้นหา</button>
+            </div>
+            <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
+        </div>
+
+        <div class="card">
+            <h3 style="margin: 0 0 15px 0; color: var(--admin);" id="adminPanelTitle">📊 สรุปยอด 12 ชม.ล่าสุด</h3>
+            <div class="admin-stat-box">
+                <div class="stat-card">นักกีฬา<div class="stat-val" id="ad_pax">0</div></div>
+                <div class="stat-card">ยอดควรได้<div class="stat-val" id="ad_exp">0</div></div>
+            </div>
+            <div class="admin-stat-box">
+                <div class="stat-card" style="background:#dcfce7;">รับแล้ว<div class="stat-val" style="color:#166534;" id="ad_paid">0</div></div>
+                <div class="stat-card" style="background:#fee2e2;">ค้าง/รอตรวจ<div class="stat-val" style="color:#991b1b;" id="ad_unpaid">0</div></div>
+            </div>
+            <button id="copyDebtBtn" onclick="copyDebtList()" class="btn" style="background: #ea580c; display: none; margin-top: 0; margin-bottom: 10px;">📋 คัดลอกรายชื่อทวงยอดเงิน</button>
+            <button id="refreshAdminBtn" onclick="loadAdminData()" class="btn" style="background: var(--admin); padding: 10px; margin-top: 0;">🔄 รีเฟรชข้อมูล</button>
+        </div>
+
+        <div class="card" id="unpaidCardBox">
+            <h4 style="margin: 0 0 10px 0; color: #dc2626;">🔴 รอแอดมินตรวจ / ค้างจ่าย</h4>
+            <div id="adminUnpaidArea" style="font-size: 14px; color: #6b7280;"></div>
+        </div>
+
+        <div class="card">
+            <h4 style="margin: 0 0 10px 0;" id="adminListTitle">👥 จัดการนักกีฬาทั้งหมด</h4>
+            <div id="adminAllArea" style="font-size: 14px; color: #6b7280;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="slipModal" onclick="if(event.target === this) closeSlipModal();">
+    <div class="modal-loader" id="modalLoader"></div>
+    <img id="modalImg" src="">
+    <button id="modalFallbackBtn" style="display:none; margin-top:15px; background:#3b82f6; color:white; border:none; padding:10px 25px; border-radius:8px; font-weight:bold; cursor:pointer;">🌐 เปิดดูสลิปในเบราว์เซอร์</button>
+    <div id="modalAdminActionArea" style="margin-top: 15px; width:90%; text-align:center; display:none;">
+         <button id="modalApproveBtn" style="background:#16a34a; color:white; border:none; padding:12px 30px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; width:100%; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">✅ สลิปถูกต้อง ยืนยันเงินเข้า</button>
+    </div>
+    <button onclick="closeSlipModal()" style="margin-top:15px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">❌ ปิดหน้าต่าง</button>
+</div>
+
+<script>
+    const MY_LIFF_ID = "2010144915-M3je0urZ"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXlzflIRUyuXB2SPwuG64OnglXKlcljR2cZwXXB4m__HVPbxW2xwSu1tSQrvgFG3SZxQ/exec";
+
+    let userUid = ""; let userDisplayName = "";
+    let myTierType = "NORMAL"; let baseCost = 20; let isAdminGlobal = false;
+    let lastDashFetchTime = 0; let currentViewDate = ""; let globalUnpaidList = [];
+    let currentModalActiveRow = null; let personalDebtTracker = 0;
+
+    function getApiUrl() { return GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime(); }
+
+    async function main() {
+        try {
+            await liff.init({ liffId: MY_LIFF_ID });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                userUid = profile.userId; 
+                userDisplayName = profile.displayName || "User_" + userUid.substring(0,5); 
+                document.getElementById('userImg').src = profile.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
+                
+                await refreshPersonalState();
+                
+                document.getElementById('loadingSec').style.display = 'none';
+                document.getElementById('checkinTab').style.display = 'block';
+            } else liff.login(); 
+        } catch (err) { alert("🏸 สัญญาณหน้าสนามอ่อน รีเฟรชไลน์หรือปิดเปิดใหม่นะครับ"); }
+    }
+    main();
+
+    async function refreshPersonalState() {
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "init", uid: userUid }) });
+            let result = await res.json();
+            
+            myTierType = result.tierType;
+            if (myTierType !== "NORMAL") {
+                let badge = document.getElementById('tierBadge');
+                badge.innerText = (myTierType === "STUDENT") ? "🎓 " + result.tierName : "⭐ " + result.tierName;
+                badge.className = (myTierType === "STUDENT") ? "badge badge-student" : "badge badge-vip";
+                badge.style.display = 'inline-block';
+            }
+            if (result.isAdmin) { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
+
+            if (result.checkedIn) { renderPersonalDashboard(result); } 
+            else {
+                try {
+                    let savedFriends = localStorage.getItem('badminton_friends_' + userUid);
+                    if (savedFriends) { JSON.parse(savedFriends).filter(f => f.trim() !== '').forEach(f => addFriendInput(f)); }
+                } catch(e) { localStorage.removeItem('badminton_friends_' + userUid); }
+                calculateDynamicCost();
+            }
+        } catch(e) { alert("🔄 เซสชั่นหมดอายุ กำลังเชื่อมต่อระบบให้ใหม่ครับ..."); setTimeout(()=>location.reload(), 1500); }
+    }
+
+    function addFriendInput(valueStr) {
+        const container = document.getElementById('friendsListArea');
+        if (container.getElementsByClassName('friend-input-container').length >= 5) { alert("เพิ่มได้สูงสุด 5 คนครับ"); return; }
+        const div = document.createElement('div'); div.className = 'friend-input-container';
+        div.innerHTML = `<input type="text" class="friend-name-input" placeholder="พิมพ์ชื่อเพื่อน" value="${valueStr}" oninput="calculateDynamicCost()" maxlength="15">
+                         <button class="remove-btn" onclick="this.parentElement.remove(); calculateDynamicCost();">×</button>`;
+        container.appendChild(div); div.querySelector('input').focus(); calculateDynamicCost();
+    }
+
+    function addLateFriendInput() {
+        const container = document.getElementById('lateFriendsArea');
+        if (container.getElementsByClassName('friend-input-container').length >= 5) { alert("เพิ่มได้สูงสุดเซสชั่นละ 5 คนครับ"); return; }
+        const div = document.createElement('div'); div.className = 'friend-input-container';
+        div.innerHTML = `<input type="text" class="late-friend-name-input" placeholder="ชื่อเพื่อนมาทีหลัง" oninput="updateLateCostDisplay()" maxlength="15">
+                         <button class="remove-btn" onclick="this.parentElement.remove(); updateLateCostDisplay();">×</button>`;
+        container.appendChild(div); div.querySelector('input').focus(); updateLateCostDisplay();
+    }
+
+    function updateLateCostDisplay() {
+        let count = 0;
+        document.querySelectorAll('.late-friend-name-input').forEach(i => { if(i.value.trim() !== "") count++; });
+        document.getElementById('dashTotalCost').innerText = personalDebtTracker + (count * 20);
+        document.getElementById('submitLateBtn').style.display = (count > 0) ? "block" : "none";
+    }
+
+    function calculateDynamicCost() {
+        let friendCount = 0;
+        document.querySelectorAll('.friend-name-input').forEach(i => { if(i.value.trim() !== "") friendCount++; });
+        let totalCost = (myTierType !== "NORMAL") ? (friendCount * 20) : (baseCost + (friendCount * 20));
+        document.getElementById('totalCostTxt').innerText = totalCost;
+        return totalCost;
+    }
+
+    function renderPersonalDashboard(res) {
+        document.getElementById('mainForm').style.display = 'none';
+        
+        let area = document.getElementById('personalListArea');
+        let statusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : "❌");
+        
+        let html = `<div class="personal-row"><span>คุณ (${res.tierName})</span><b>${res.userStatus} ${statusIcon}</b></div>`;
+        res.friends.forEach((f) => { html += `<div class="personal-row"><span>เพื่อนพ่วง: ${f}</span><b>${res.userStatus} ${statusIcon}</b></div>`; });
+        area.innerHTML = html;
+        
+        personalDebtTracker = res.costToday;
+        document.getElementById('dashTotalCost').innerText = personalDebtTracker;
+        
+        const btnPay = document.getElementById('confirmPayBtn');
+        const warnTxt = document.getElementById('mixedStatusWarning');
+        
+        if (res.hasUnpaid || res.isWaiting) {
+            document.getElementById('paymentSec').style.display = 'block';
+            if (res.isWaiting && res.hasUnpaid) {
+                btnPay.disabled = true; btnPay.style.backgroundColor = "#9ca3af";
+                warnTxt.style.display = 'block';
+                btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+            } else if (res.isWaiting) {
+                btnPay.disabled = true; btnPay.style.backgroundColor = "#eab308";
+                warnTxt.style.display = 'none';
+                btnPay.innerText = "⏳ รอแอดมินตรวจสลิปใบล่าสุด";
+            } else {
+                btnPay.disabled = false; btnPay.style.backgroundColor = "var(--primary)";
+                warnTxt.style.display = 'none';
+                btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+            }
+        } else { document.getElementById('paymentSec').style.display = 'none'; }
+        
+        document.getElementById('personalDashboard').style.display = 'block';
+    }
+
+    function switchTab(target) {
+        document.getElementById('checkinTab').style.display = (target === 'checkin') ? 'block' : 'none';
+        document.getElementById('dashboardTab').style.display = (target === 'dashboard') ? 'block' : 'none';
+        document.getElementById('adminTab').style.display = (target === 'admin') ? 'block' : 'none';
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('tab' + target.charAt(0).toUpperCase() + target.slice(1) + 'Btn').classList.add('active');
+        if(target === 'dashboard') loadDashboardData();
+    }
+
+    async function executeCheckIn(type) {
+        const btnId = (type === 'MAIN') ? 'submitCheckInBtn' : 'submitLateBtn';
+        const btn = document.getElementById(btnId);
+        
+        btn.disabled = true; btn.innerText = "⏳ กำลังบันทึกเข้ากระดาน...";
+        document.querySelectorAll('.tab-btn').forEach(t => t.disabled = true);
+
+        let friendsArray = [];
+        let selector = (type === 'MAIN') ? '.friend-name-input' : '.late-friend-name-input';
+        
+        document.querySelectorAll(selector).forEach(i => { if (i.value.trim() !== "") friendsArray.push(i.value.trim()); });
+        if (type === 'MAIN') localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
+
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "checkIn", checkInType: type, uid: userUid, displayName: userDisplayName, friends: friendsArray }) });
+            let result = await res.json();
+            
+            if (result.status === "error") { 
+                alert(result.message); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
+                document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); return; 
+            }
+
+            document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false);
+            if (type === 'LATE') { 
+                document.getElementById('lateFriendsArea').innerHTML = ""; 
+                document.getElementById('submitLateBtn').style.display = "none";
+            }
+            await refreshPersonalState();
+        } catch (error) { 
+            alert("🏸 การเชื่อมต่อขัดข้อง ลองกดอีกรอบครับ"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
+            document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); 
+        }
+    }
+
+    function processImageAndSubmit() {
+        const btn = document.getElementById('confirmPayBtn');
+        btn.disabled = true; btn.innerText = "⏳ กำลังล็อกปุ่มและจัดการรูปภาพ...";
+        
+        const fileInput = document.getElementById('slipFileInput');
+        // เกราะป้องกัน JSON พังจากเครื่องหมายคำพูด
+        const noteInputRaw = document.getElementById('paymentNoteInput').value.trim();
+        const noteSafe = noteInputRaw.replace(/"/g, "'").replace(/\\/g, "/");
+        
+        if (fileInput.files.length === 0) { executePaymentConfirm("-", noteSafe); return; }
+
+        let file = fileInput.files[0];
+        if (file.size > 10 * 1024 * 1024) { alert("ไฟล์รูปใหญ่เกิน 10MB กรุณาแคปหรือใช้รูปอื่นครับ"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
+
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let img = new Image();
+            img.onload = function() {
+                let canvas = document.createElement('canvas'); let max_size = 600; 
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } } 
+                else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                
+                canvas.width = width; canvas.height = height;
+                let ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                let compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
+                executePaymentConfirm(compressedBase64, noteSafe);
+            };
+            img.onerror = function() { alert("❌ ไฟล์สลิปชำรุดครับ"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function executePaymentConfirm(base64Data, noteText) {
+        const btn = document.getElementById('confirmPayBtn');
+        btn.innerText = "⏳ นำสลิปเข้าคลังหลังบ้าน...";
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); 
+
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "confirmPayment", uid: userUid, slipBase64: base64Data, note: noteText }), signal: controller.signal });
+            clearTimeout(timeoutId); let result = await res.json();
+            
+            if (result.status === "success") { 
+                document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
+                await refreshPersonalState();
+            } else { throw new Error(result.message); }
+        } catch (e) { btn.disabled = false; btn.innerText = "❌ ส่งล้มเหลว (เน็ตหลุด) กดลองใหม่ครับ"; }
+    }
+
+    async function loadDashboardData() {
+        const btn = document.getElementById('refreshDashBtn');
+        if (Date.now() - lastDashFetchTime < 15000) return; 
+        btn.disabled = true; btn.innerText = "⏳...";
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getDashboard" }) });
+            let result = await res.json();
+            if (result.status === "success") {
+                lastDashFetchTime = Date.now();
+                const tbody = document.getElementById('dashboardTableBody'); tbody.innerHTML = ""; 
+                if (result.data.length === 0) document.getElementById('emptyDashTxt').style.display = 'block';
+                else {
+                    document.getElementById('emptyDashTxt').style.display = 'none';
+                    result.data.forEach(item => { 
+                        let statusIcon = item.status.includes("✅ จ่ายแล้ว") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : "❌"));
+                        tbody.innerHTML += `<tr><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
+                    });
+                }
+            }
+        } catch (e) {} finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
+    }
+
+    function copyAcc() { navigator.clipboard.writeText("020219081907"); alert("คัดลอกเลขบัญชีสำเร็จ"); }
+
+    async function loadAdminData() {
+        currentViewDate = ""; document.getElementById('resetTodayBtn').style.display = "none"; document.getElementById('historyDateInput').value = "";
+        document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
+        document.getElementById('unpaidCardBox').style.display = "block";
+        renderAdminUI(getApiUrl(), { action: "getAdminData", uid: userUid }, true);
+    }
+
+    async function fetchHistory() {
+        let dateVal = document.getElementById('historyDateInput').value; 
+        if(!dateVal) { alert("กรุณาเลือกวันที่ก่อนครับ"); return; }
+        currentViewDate = dateVal; let d = new Date(dateVal);
+        let formattedDate = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        document.getElementById('adminPanelTitle').innerText = "📅 ประวัติยอดเงิน ณ วันที่ " + formattedDate;
+        document.getElementById('adminListTitle').innerText = "👥 รายชื่อนักกีฬาเมื่อ " + formattedDate;
+        document.getElementById('resetTodayBtn').style.display = "block"; document.getElementById('unpaidCardBox').style.display = "none";
+        renderAdminUI(getApiUrl(), { action: "getHistoryData", uid: userUid, targetDate: dateVal }, false);
+    }
+
+    async function renderAdminUI(url, bodyObj, isToday) {
+        document.getElementById('ad_pax').innerText = "...";
+        try {
+            let res = await fetch(url, { method: 'POST', body: JSON.stringify(bodyObj) });
+            let r = await res.json();
+            if (r.status === "success") {
+                document.getElementById('ad_pax').innerText = r.stats.totalPax; document.getElementById('ad_exp').innerText = r.stats.expected;
+                document.getElementById('ad_paid').innerText = r.stats.paid; document.getElementById('ad_unpaid').innerText = r.stats.unpaid;
+                globalUnpaidList = r.unpaidList; document.getElementById('copyDebtBtn').style.display = (r.unpaidList.length > 0) ? "block" : "none";
+
+                if (isToday) {
+                    let upHTML = "";
+                    r.unpaidList.forEach(u => {
+                        let alertColor = u.status.includes("รอแอดมินตรวจ") ? "#eab308" : "#ef4444";
+                        let slipBtn = (u.slipUrl && u.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${u.slipUrl}', '${u.time}', '${u.uid}')">📄 ดูสลิป</button>` : '';
+                        let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold;">📝 หมายเหตุ: ${u.note}</div>` : '';
+                        upHTML += `<div style="padding:10px; border:2px solid ${alertColor}; border-radius:8px; margin-bottom:8px; background: #fff;"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: ${alertColor}; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${slipBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button></div></div>`;
+                    });
+                    document.getElementById('adminUnpaidArea').innerHTML = upHTML || "ไม่มีรายการค้างชำระ";
+                }
+
+                let allowEditHistory = false;
+                if (!isToday && currentViewDate !== "") {
+                    let tDateObj = new Date(currentViewDate + "T00:00:00+07:00");
+                    let todayObj = new Date(new Date().toLocaleDateString('en-US', {timeZone: 'Asia/Bangkok'}) + "T00:00:00+07:00");
+                    if (Math.floor((todayObj - tDateObj) / (1000 * 60 * 60 * 24)) <= 3) allowEditHistory = true;
+                }
+
+                let allHTML = "";
+                r.todayList.forEach(a => {
+                    let isFriend = a.uid.includes("FRIEND_OF_"); let promoteBtn = "";
+                    if (!isFriend && a.name !== "โอนแทนเพื่อน") {
+                        if (a.tierType === "STUDENT") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดนักศึกษา</button>` : '';
+                        else if (a.tierType === "VIP") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลด VIP</button>` : '';
+                        else { promoteBtn = isToday ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 สิทธิ์ นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ สิทธิ์ VIP</button>` : ''; }
+                    }
+                    let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button>` : '';
+                    let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}')">📄 ดูสลิป</button>` : '';
+                    let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold;"> [หมายเหตุ: ${a.note}]</span>` : '';
+                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn}</div>`;
+                });
+                document.getElementById('adminAllArea').innerHTML = allHTML || "ยังไม่มีข้อมูล";
+            }
+        } catch (e) { alert("ดึงข้อมูลล้มเหลว"); }
+    }
+
+    async function adminAction(targetTime, targetUid, manageType, btnElement) {
+        if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return;
+        btnElement.disabled = true; btnElement.innerText = "⏳...";
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
+            let r = await res.json();
+            if (r.status === "success") { btnElement.innerText = "✅ สำเร็จ"; closeSlipModal(); setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); } 
+            else { alert(r.message); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; }
+        } catch (e) { alert("เชื่อมต่อล้มเหลว"); btnElement.disabled = false; }
+    }
+
+    function openSlipModal(driveUrl, time, uid) {
+        if(!driveUrl || driveUrl === "-") return;
+        let fileIdMatch = driveUrl.match(/[-\w]{25,}/); 
+        if(fileIdMatch && fileIdMatch[0]) {
+            currentModalActiveRow = { time: time, uid: uid };
+            document.getElementById('slipModal').style.display = 'flex';
+            document.getElementById('modalFallbackBtn').style.display = 'none';
+            document.getElementById('modalLoader').style.display = 'block';
+            document.getElementById('modalAdminActionArea').style.display = 'block';
+            document.getElementById('modalApproveBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'confirmPay', this); };
+            document.getElementById('modalApproveBtn').innerText = "✅ สลิปถูกต้อง ยืนยันเงินเข้า";
+            document.getElementById('modalApproveBtn').disabled = false;
+            let imgEl = document.getElementById('modalImg');
+            imgEl.onload = function() { document.getElementById('modalLoader').style.display = 'none'; };
+            imgEl.onerror = function() { document.getElementById('modalLoader').style.display = 'none'; document.getElementById('modalFallbackBtn').style.display = 'block'; document.getElementById('modalFallbackBtn').onclick = () => window.open(driveUrl, '_blank'); };
+            imgEl.src = "https://drive.google.com/thumbnail?id=" + fileIdMatch[0] + "&sz=w800&t=" + new Date().getTime();
+        } else { window.open(driveUrl, '_blank'); } 
+    }
+    
+    function closeSlipModal() { document.getElementById('slipModal').style.display = 'none'; document.getElementById('modalImg').src = ""; currentModalActiveRow = null; }
+
+    function copyDebtList() {
+        if (globalUnpaidList.length === 0) return;
+        let checkDateStr = currentViewDate ? new Date(currentViewDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        let txtUnpaid = ""; let txtCheck = ""; let totalDebt = 0;
+        globalUnpaidList.forEach(item => {
+            totalDebt += item.cost;
+            let displayNote = item.note !== '-' ? (item.note.length > 30 ? item.note.substring(0, 30) + '...' : item.note) : '';
+            let appendText = `- ${item.name} (${item.cost} บาท)${displayNote ? ' [📝 '+displayNote+']' : ''}\n`;
+            if (item.status.includes("รอแอดมินตรวจ") || item.name === "โอนแทนเพื่อน") txtCheck += appendText; else txtUnpaid += appendText;
+        });
+        let msg = `📢 *สรุปยอดค้างชำระ ก๊วนแบดมินตัน*\n📅 ประจำวันที่: ${checkDateStr}\n\n`;
+        if (txtUnpaid) msg += `❌ *ยังไม่ได้ชำระเงิน:*\n${txtUnpaid}\n`;
+        if (txtCheck) msg += `⏳ *ส่งสลิปแล้ว (รอแอดมินกดตรวจ):*\n${txtCheck}\n`;
+        msg += `💰 *ยอดค้างรวมทั้งหมด: ${totalDebt} บาท*\n💳 บัญชี ธ.ก.ส. : *020219081907*\n🙏 รบกวนสมาชิกตรวจสอบและโอนเคลียร์ยอดด้วยนะครับ`;
+        navigator.clipboard.writeText(msg).then(() => { alert("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ"); });
+    }
+</script>
+</body>
+</html>
