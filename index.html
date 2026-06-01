@@ -41,6 +41,13 @@
         .badge { display: inline-block; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: 5px; }
         .badge-vip { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
         .badge-student { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .admin-group-card { padding: 12px; border: 2px solid #8b5cf6; border-radius: 10px; margin-bottom: 12px; background: #faf5ff; }
+        .admin-group-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .admin-group-slip-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; cursor: pointer; }
+        .admin-group-details { flex: 1; }
+        .admin-individual-card { padding:10px; border:2px solid #ef4444; border-radius:8px; margin-bottom:8px; background: #fff; }
+        .admin-sub-item { padding: 8px; margin-top: 8px; border-top: 1px dashed #d1d5db; display: flex; justify-content: space-between; align-items: center; }
+
         .icon-badge { font-size: 16px; margin-left: 5px; }
         
         #slipModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:2000; justify-content:center; align-items:center; flex-direction:column; }
@@ -451,14 +458,43 @@
                 globalUnpaidList = r.unpaidList; document.getElementById('copyDebtBtn').style.display = (r.unpaidList.length > 0) ? "block" : "none";
 
                 if (isToday) {
+                    let unpaidArea = document.getElementById('adminUnpaidArea');
                     let upHTML = "";
-                    r.unpaidList.forEach(u => {
-                        let alertColor = u.status.includes("รอแอดมินตรวจ") ? "#eab308" : "#ef4444";
-                        let slipBtn = (u.slipUrl && u.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${u.slipUrl}', '${u.time}', '${u.uid}')">📄 ดูสลิป</button>` : '';
-                        let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold;">📝 หมายเหตุ: ${u.note}</div>` : '';
-                        upHTML += `<div style="padding:10px; border:2px solid ${alertColor}; border-radius:8px; margin-bottom:8px; background: #fff;"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: ${alertColor}; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${slipBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button></div></div>`;
-                    });
-                    document.getElementById('adminUnpaidArea').innerHTML = upHTML || "ไม่มีรายการค้างชำระ";
+                    const groups = r.unpaidGroups || {};
+
+                    for (const key in groups) {
+                        const group = groups[key];
+                        if (group.isGroup) {
+                            const firstMember = group.members[0];
+                            const slipThumbUrl = `https://drive.google.com/thumbnail?id=${group.slipUrl.match(/[-\w]{25,}/)[0]}&sz=w100`;
+                            let membersHtml = "";
+                            group.members.forEach(m => {
+                                membersHtml += `<div class="admin-sub-item">
+                                    <span>${m.name} (${m.cost} บ.)</span>
+                                    <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับเงิน</button>
+                                </div>`;
+                            });
+
+                            upHTML += `<div class="admin-group-card">
+                                <div class="admin-group-header">
+                                    <img src="${slipThumbUrl}" class="admin-group-slip-thumb" onclick="openSlipModal('${group.slipUrl}', '${firstMember.time}', '${firstMember.uid}')">
+                                    <div class="admin-group-details">
+                                        <b style="color:#8b5cf6">ยอดรวมสลิป: ${group.totalCost} บาท</b>
+                                        <div style="font-size:12px;">${group.members.map(m => m.name).join(', ')}</div>
+                                        ${(group.note && group.note !== "-") ? `<div style="font-size:12px; color:#2563eb; font-weight:bold;">📝 หมายเหตุ: ${group.note}</div>` : ''}
+                                    </div>
+                                </div>
+                                <button class="admin-action-btn" style="background:#16a34a; width:100%; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'confirmPay', this)">✅ อนุมัติทั้งสลิป (${group.members.length} คน)</button>
+                                <div style="text-align:center; font-size:12px; margin-top:5px; color:#6b7280;">หรือจัดการแยกคน:</div>
+                                <div class="admin-sub-items-container">${membersHtml}</div>
+                            </div>`;
+                        } else { // Individual, no slip
+                            const u = group.members[0];
+                            let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold;">📝 หมายเหตุ: ${u.note}</div>` : '';
+                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;"><button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button></div></div>`;
+                        }
+                    }
+                    unpaidArea.innerHTML = upHTML || "ไม่มีรายการค้างชำระ";
                 }
 
                 let allowEditHistory = false;
