@@ -54,6 +54,12 @@
         #modalImg { max-width:90%; max-height:65%; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.5); object-fit: contain; }
         .modal-loader { border: 4px solid #333; border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; position: absolute; z-index: -1; }
         .personal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #e5e7eb; font-size: 15px; }
+        
+        /* Toast Notification */
+        #toastBox { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 12px 20px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; font-weight: bold; box-shadow: 0px 5px 15px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
+        #toastBox.show { visibility: visible; opacity: 1; bottom: 50px; }
+        #toastBox.success { background-color: var(--primary); }
+        #toastBox.error { background-color: #ef4444; }
     </style>
 </head>
 <body>
@@ -63,6 +69,7 @@
     <button class="tab-btn" id="tabDashboardBtn" onclick="switchTab('dashboard')">👥 ใครมาบ้าง</button>
     <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin'); loadAdminData();">🛠️ แอดมิน</button>
 </div>
+<div id="toastBox"></div>
 
 <div class="container">
     <div id="loadingSec" class="card" style="text-align: center;">
@@ -151,6 +158,25 @@
             <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
         </div>
 
+        <div class="card" style="border: 2px dashed var(--admin);" id="walkInCard">
+            <h4 style="margin: 0 0 10px 0; color: var(--admin);">➕ เพิ่มชื่อคน Walk-in (แอดมินเพิ่มเอง)</h4>
+            <div style="display: flex; gap: 8px; flex-direction: column;">
+                <input type="text" id="walkInNameInput" placeholder="พิมพ์ชื่อนักกีฬา" maxlength="20">
+                <div style="display: flex; gap: 8px;">
+                    <select id="walkInTierSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
+                        <option value="NORMAL">รายวัน (20 บ.)</option>
+                        <option value="STUDENT">นักศึกษา (ฟรี)</option>
+                        <option value="VIP">รายเดือน (ฟรี)</option>
+                    </select>
+                    <select id="walkInStatusSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
+                        <option value="UNPAID">❌ ยังไม่จ่าย</option>
+                        <option value="PAID">✅ จ่ายแล้ว (จ่ายสด)</option>
+                    </select>
+                </div>
+                <button onclick="submitWalkIn(this)" class="btn" style="background: var(--admin); margin-top: 5px;">🟢 เพิ่มชื่อเข้ากระดาน</button>
+            </div>
+        </div>
+
         <div class="card">
             <h3 style="margin: 0 0 15px 0; color: var(--admin);" id="adminPanelTitle">📊 สรุปยอด 12 ชม.ล่าสุด</h3>
             <div class="admin-stat-box">
@@ -198,6 +224,13 @@
 
     function getApiUrl() { return GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime(); }
 
+    function showToast(msg, type="success") {
+        let tb = document.getElementById("toastBox");
+        tb.innerText = msg;
+        tb.className = "show " + type;
+        setTimeout(() => { tb.className = tb.className.replace("show", ""); }, 3000);
+    }
+
     async function main() {
         try {
             await liff.init({ liffId: MY_LIFF_ID });
@@ -212,8 +245,8 @@
                 
                 document.getElementById('loadingSec').style.display = 'none';
                 document.getElementById('checkinTab').style.display = 'block';
-            } else liff.login(); 
-        } catch (err) { alert("🏸 สัญญาณหน้าสนามอ่อน รีเฟรชไลน์หรือปิดเปิดใหม่นะครับ"); }
+            } else liff.login();
+        } catch (err) { showToast("🏸 สัญญาณหน้าสนามอ่อน รีเฟรชไลน์หรือปิดเปิดใหม่นะครับ", "error"); }
     }
     main();
 
@@ -239,12 +272,12 @@
                 } catch(e) { localStorage.removeItem('badminton_friends_' + userUid); }
                 calculateDynamicCost();
             }
-        } catch(e) { alert("🔄 เซสชั่นหมดอายุ กำลังเชื่อมต่อระบบให้ใหม่ครับ..."); setTimeout(()=>location.reload(), 1500); }
+        } catch(e) { showToast("🔄 เซสชั่นหมดอายุ กำลังเชื่อมต่อระบบให้ใหม่ครับ...", "error"); setTimeout(()=>location.reload(), 1500); }
     }
 
     function addFriendInput(valueStr) {
         const container = document.getElementById('friendsListArea');
-        if (container.getElementsByClassName('friend-input-container').length >= 5) { alert("เพิ่มได้สูงสุด 5 คนครับ"); return; }
+        if (container.getElementsByClassName('friend-input-container').length >= 5) { showToast("เพิ่มได้สูงสุด 5 คนครับ", "error"); return; }
         const div = document.createElement('div'); div.className = 'friend-input-container';
         div.innerHTML = `<input type="text" class="friend-name-input" placeholder="พิมพ์ชื่อเพื่อน" value="${valueStr}" oninput="calculateDynamicCost()" maxlength="15">
                          <button class="remove-btn" onclick="this.parentElement.remove(); calculateDynamicCost();">×</button>`;
@@ -253,7 +286,7 @@
 
     function addLateFriendInput() {
         const container = document.getElementById('lateFriendsArea');
-        if (container.getElementsByClassName('friend-input-container').length >= 5) { alert("เพิ่มได้สูงสุดเซสชั่นละ 5 คนครับ"); return; }
+        if (container.getElementsByClassName('friend-input-container').length >= 5) { showToast("เพิ่มได้สูงสุดเซสชั่นละ 5 คนครับ", "error"); return; }
         const div = document.createElement('div'); div.className = 'friend-input-container';
         div.innerHTML = `<input type="text" class="late-friend-name-input" placeholder="ชื่อเพื่อนมาทีหลัง" oninput="updateLateCostDisplay()" maxlength="15">
                          <button class="remove-btn" onclick="this.parentElement.remove(); updateLateCostDisplay();">×</button>`;
@@ -344,7 +377,7 @@
             let result = await res.json();
             
             if (result.status === "error") { 
-                alert(result.message); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
+                showToast(result.message, "error"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
                 document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); return; 
             }
 
@@ -355,7 +388,7 @@
             }
             await refreshPersonalState();
         } catch (error) { 
-            alert("🏸 การเชื่อมต่อขัดข้อง ลองกดอีกรอบครับ"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
+            showToast("🏸 การเชื่อมต่อขัดข้อง ลองกดอีกรอบครับ", "error"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
             document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); 
         }
     }
@@ -372,7 +405,7 @@
         if (fileInput.files.length === 0) { executePaymentConfirm("-", noteSafe); return; }
 
         let file = fileInput.files[0];
-        if (file.size > 10 * 1024 * 1024) { alert("ไฟล์รูปใหญ่เกิน 10MB กรุณาแคปหรือใช้รูปอื่นครับ"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
+        if (file.size > 10 * 1024 * 1024) { showToast("ไฟล์รูปใหญ่เกิน 10MB กรุณาแคปหรือใช้รูปอื่นครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
 
         let reader = new FileReader();
         reader.onload = function(e) {
@@ -388,7 +421,7 @@
                 let compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
                 executePaymentConfirm(compressedBase64, noteSafe);
             };
-            img.onerror = function() { alert("❌ ไฟล์สลิปชำรุดครับ"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; };
+            img.onerror = function() { showToast("❌ ไฟล์สลิปชำรุดครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -407,6 +440,7 @@
             if (result.status === "success") { 
                 document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
                 await refreshPersonalState();
+                showToast("✅ อัปโหลดสลิปสำเร็จ");
             } else { throw new Error(result.message); }
         } catch (e) { btn.disabled = false; btn.innerText = "❌ ส่งล้มเหลว (เน็ตหลุด) กดลองใหม่ครับ"; }
     }
@@ -433,23 +467,24 @@
         } catch (e) {} finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
     }
 
-    function copyAcc() { navigator.clipboard.writeText("020219081907"); alert("คัดลอกเลขบัญชีสำเร็จ"); }
+    function copyAcc() { navigator.clipboard.writeText("020219081907"); showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success"); }
 
     async function loadAdminData() {
         currentViewDate = ""; document.getElementById('resetTodayBtn').style.display = "none"; document.getElementById('historyDateInput').value = "";
         document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
         document.getElementById('unpaidCardBox').style.display = "block";
+        document.getElementById('walkInCard').style.display = "block";
         renderAdminUI(getApiUrl(), { action: "getAdminData", uid: userUid }, true);
     }
 
     async function fetchHistory() {
         let dateVal = document.getElementById('historyDateInput').value; 
-        if(!dateVal) { alert("กรุณาเลือกวันที่ก่อนครับ"); return; }
+        if(!dateVal) { showToast("กรุณาเลือกวันที่ก่อนครับ", "error"); return; }
         currentViewDate = dateVal; let d = new Date(dateVal);
         let formattedDate = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
         document.getElementById('adminPanelTitle').innerText = "📅 ประวัติยอดเงิน ณ วันที่ " + formattedDate;
         document.getElementById('adminListTitle').innerText = "👥 รายชื่อนักกีฬาเมื่อ " + formattedDate;
-        document.getElementById('resetTodayBtn').style.display = "block"; document.getElementById('unpaidCardBox').style.display = "none";
+        document.getElementById('resetTodayBtn').style.display = "block"; document.getElementById('unpaidCardBox').style.display = "none"; document.getElementById('walkInCard').style.display = "none";
         renderAdminUI(getApiUrl(), { action: "getHistoryData", uid: userUid, targetDate: dateVal }, false);
     }
 
@@ -529,7 +564,7 @@
                 });
                 document.getElementById('adminAllArea').innerHTML = allHTML || "ยังไม่มีข้อมูล";
             }
-        } catch (e) { alert("ดึงข้อมูลล้มเหลว"); }
+        } catch (e) { showToast("ดึงข้อมูลล้มเหลว", "error"); }
     }
 
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
@@ -539,8 +574,29 @@
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
             let r = await res.json();
             if (r.status === "success") { btnElement.innerText = "✅ สำเร็จ"; closeSlipModal(); setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); } 
-            else { alert(r.message); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; }
-        } catch (e) { alert("เชื่อมต่อล้มเหลว"); btnElement.disabled = false; }
+            else { showToast(r.message, "error"); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; }
+        } catch (e) { showToast("เชื่อมต่อล้มเหลว", "error"); btnElement.disabled = false; }
+    }
+
+    async function submitWalkIn(btn) {
+        let wName = document.getElementById('walkInNameInput').value.trim();
+        if (!wName) { showToast("กรุณาพิมพ์ชื่อนักกีฬา", "error"); return; }
+        let wTier = document.getElementById('walkInTierSelect').value;
+        let wStatus = document.getElementById('walkInStatusSelect').value;
+
+        let oldText = btn.innerText;
+        btn.disabled = true; btn.innerText = "⏳ กำลังเพิ่ม...";
+
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminAddWalkIn", uid: userUid, walkInName: wName, walkInTier: wTier, walkInStatus: wStatus }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                showToast("✅ เพิ่มชื่อเรียบร้อย", "success");
+                document.getElementById('walkInNameInput').value = "";
+                loadAdminData();
+            } else { showToast(r.message || "ผิดพลาด", "error"); }
+        } catch(e) { showToast("เชื่อมต่อล้มเหลว", "error"); }
+        finally { btn.disabled = false; btn.innerText = oldText; }
     }
 
     function openSlipModal(driveUrl, time, uid) {
@@ -578,7 +634,7 @@
         if (txtUnpaid) msg += `❌ *ยังไม่ได้ชำระเงิน:*\n${txtUnpaid}\n`;
         if (txtCheck) msg += `⏳ *ส่งสลิปแล้ว (รอแอดมินกดตรวจ):*\n${txtCheck}\n`;
         msg += `💰 *ยอดค้างรวมทั้งหมด: ${totalDebt} บาท*\n💳 บัญชี ธ.ก.ส. : *020219081907*\n🙏 รบกวนสมาชิกตรวจสอบและโอนเคลียร์ยอดด้วยนะครับ`;
-        navigator.clipboard.writeText(msg).then(() => { alert("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ"); });
+        navigator.clipboard.writeText(msg).then(() => { showToast("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ", "success"); });
     }
 </script>
 </body>
