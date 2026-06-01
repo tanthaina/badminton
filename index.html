@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🏸 ระบบจัดการก๊วนแบดมินตัน</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- 
+    ==========================================
+    📝 DEV NOTES & POST-MORTEM (ฝั่งหน้าบ้าน):
+    1. [Bug] ส่งสลิปเปล่าเพื่อล้างหนี้ (Empty Slip Exploit)
+       - [แก้] ดักจับ `fileInput.files.length === 0` บังคับให้ต้องพิมพ์หมายเหตุก่อนถึงจะกดส่งแบบไม่มีรูปได้
+    2. [UX] ระบบ Alert แข็งเกินไปและบางเบราว์เซอร์บล็อก
+       - [แก้] เปลี่ยนไปใช้ Toast Notification (แบนเนอร์ลอยด้านล่าง) #toastBox แทน alert()
+    3. [UI] ปัญหารูดหน้าจอแล้วเว็บเด้งรีเฟรชเอง (Pull-to-refresh) บนมือถือ
+       - [แก้] ใส่ CSS `overscroll-behavior-y: none;` ที่ body และ `touch-action: manipulation;` ที่ปุ่ม
+    ========================================== 
+    -->
     <style>
         :root { --primary: #10b981; --primary-dark: #059669; --bg: #f4f6f9; --card: #ffffff; --text: #1f2937; --admin: #8b5cf6; }
         /* 🚨 กันรีโหลดเวลารูดจอลงแรงๆ (Pull-to-Refresh Trap Shield) */
@@ -44,8 +55,8 @@
         .admin-group-card { padding: 12px; border: 2px solid #8b5cf6; border-radius: 10px; margin-bottom: 12px; background: #faf5ff; }
         .admin-group-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .admin-group-slip-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; cursor: pointer; }
-        .admin-group-details { flex: 1; }
-        .admin-individual-card { padding:10px; border:2px solid #ef4444; border-radius:8px; margin-bottom:8px; background: #fff; }
+        .admin-group-details { flex: 1; word-break: break-word; overflow-wrap: break-word; }
+        .admin-individual-card { padding:10px; border:2px solid #ef4444; border-radius:8px; margin-bottom:8px; background: #fff; word-break: break-word; overflow-wrap: break-word; }
         .admin-sub-item { padding: 8px; margin-top: 8px; border-top: 1px dashed #d1d5db; display: flex; justify-content: space-between; align-items: center; }
 
         .icon-badge { font-size: 16px; margin-left: 5px; }
@@ -402,7 +413,10 @@
         const noteInputRaw = document.getElementById('paymentNoteInput').value.trim();
         const noteSafe = noteInputRaw.replace(/"/g, "'").replace(/\\/g, "/");
         
-        if (fileInput.files.length === 0) { executePaymentConfirm("-", noteSafe); return; }
+        if (fileInput.files.length === 0) { 
+            if (!noteSafe) { showToast("⚠️ กรุณาแนบสลิป หรือพิมพ์หมายเหตุ (เช่น จ่ายสด) ก่อนส่งครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
+            executePaymentConfirm("-", noteSafe); return; 
+        }
 
         let file = fileInput.files[0];
         if (file.size > 10 * 1024 * 1024) { showToast("ไฟล์รูปใหญ่เกิน 10MB กรุณาแคปหรือใช้รูปอื่นครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
@@ -410,7 +424,13 @@
         let reader = new FileReader();
         reader.onload = function(e) {
             let img = new Image();
+        let fallbackTimer = setTimeout(() => {
+            showToast("⚠️ การประมวลผลรูปใช้เวลานานเกินไป กรุณาลองใหม่", "error");
+            btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+        }, 8000);
+
             img.onload = function() {
+            clearTimeout(fallbackTimer);
                 let canvas = document.createElement('canvas'); let max_size = 600; 
                 let width = img.width; let height = img.height;
                 if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } } 
@@ -421,7 +441,10 @@
                 let compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
                 executePaymentConfirm(compressedBase64, noteSafe);
             };
-            img.onerror = function() { showToast("❌ ไฟล์สลิปชำรุดครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; };
+        img.onerror = function() { 
+            clearTimeout(fallbackTimer);
+            showToast("❌ ไฟล์สลิปชำรุดครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; 
+        };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -470,26 +493,34 @@
     function copyAcc() { navigator.clipboard.writeText("020219081907"); showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success"); }
 
     async function loadAdminData() {
+        const btn = document.getElementById('refreshAdminBtn');
+        if (btn) { btn.disabled = true; btn.innerText = "⏳ กำลังโหลด..."; }
         currentViewDate = ""; document.getElementById('resetTodayBtn').style.display = "none"; document.getElementById('historyDateInput').value = "";
         document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
         document.getElementById('unpaidCardBox').style.display = "block";
         document.getElementById('walkInCard').style.display = "block";
-        renderAdminUI(getApiUrl(), { action: "getAdminData", uid: userUid }, true);
+        await renderAdminUI(getApiUrl(), { action: "getAdminData", uid: userUid }, true);
+        if (btn) { btn.disabled = false; btn.innerText = "🔄 รีเฟรชข้อมูล"; }
     }
 
     async function fetchHistory() {
         let dateVal = document.getElementById('historyDateInput').value; 
         if(!dateVal) { showToast("กรุณาเลือกวันที่ก่อนครับ", "error"); return; }
+        const btn = document.querySelector('button[onclick="fetchHistory()"]');
+        if(btn) { btn.disabled = true; btn.innerText = "⏳..."; }
         currentViewDate = dateVal; let d = new Date(dateVal);
         let formattedDate = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
         document.getElementById('adminPanelTitle').innerText = "📅 ประวัติยอดเงิน ณ วันที่ " + formattedDate;
         document.getElementById('adminListTitle').innerText = "👥 รายชื่อนักกีฬาเมื่อ " + formattedDate;
         document.getElementById('resetTodayBtn').style.display = "block"; document.getElementById('unpaidCardBox').style.display = "none"; document.getElementById('walkInCard').style.display = "none";
-        renderAdminUI(getApiUrl(), { action: "getHistoryData", uid: userUid, targetDate: dateVal }, false);
+        await renderAdminUI(getApiUrl(), { action: "getHistoryData", uid: userUid, targetDate: dateVal }, false);
+        if(btn) { btn.disabled = false; btn.innerText = "🔍 ค้นหา"; }
     }
 
     async function renderAdminUI(url, bodyObj, isToday) {
         document.getElementById('ad_pax').innerText = "...";
+        document.getElementById('adminAllArea').innerHTML = '<div class="loader" style="margin: 20px auto; width: 25px; height: 25px;"></div>';
+        if (isToday) document.getElementById('adminUnpaidArea').innerHTML = '<div class="loader" style="margin: 20px auto; width: 25px; height: 25px;"></div>';
         try {
             let res = await fetch(url, { method: 'POST', body: JSON.stringify(bodyObj) });
             let r = await res.json();
