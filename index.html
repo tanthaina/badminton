@@ -413,7 +413,11 @@
 
     async function main() {
         try {
-            await liff.init({ liffId: MY_LIFF_ID });
+            // 🛡️ ป้องกัน LIFF ค้างตลอดกาลด้วย Promise.race (ตัดจบใน 12 วินาที)
+            const liffInit = liff.init({ liffId: MY_LIFF_ID });
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 12000));
+            await Promise.race([liffInit, initTimeout]);
+            
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userUid = profile.userId; 
@@ -421,7 +425,8 @@
                 document.getElementById('userImg').src = profile.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
                 document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
                 
-                await refreshPersonalState();
+                let syncSuccess = await refreshPersonalState();
+                if (!syncSuccess) return; // 🛡️ หยุดทำงานทันทีถ้าระบบดึงข้อมูลพัง (ป้องกันจอแหว่งก่อนรีโหลด)
                 
                 document.getElementById('loadingSec').style.display = 'none';
                 document.getElementById('checkinTab').style.display = 'block';
@@ -459,10 +464,12 @@
                 } catch(e) { localStorage.removeItem('badminton_friends_' + userUid); }
                 calculateDynamicCost();
             }
+            return true;
         } catch(e) { 
             console.error("[SYNC_01] Fetch Personal State Error:", e);
             showToast("🔄 สัญญาณขาดหาย กำลังพยายามเชื่อมต่อใหม่... [SYNC_01]", "error"); 
             setTimeout(()=>location.reload(), 2000); 
+            return false;
         }
     }
 
@@ -668,7 +675,10 @@
 
     async function loadDashboardData() {
         const btn = document.getElementById('refreshDashBtn');
-        if (Date.now() - lastDashFetchTime < 15000) return; 
+        if (Date.now() - lastDashFetchTime < 15000) {
+            showToast("✅ ข้อมูลเป็นปัจจุบันแล้ว (ระบบจำกัดการดึงถี่)", "success");
+            return; 
+        }
         btn.disabled = true; btn.innerText = "⏳...";
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getDashboard" }) });
