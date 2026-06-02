@@ -807,7 +807,7 @@
 
                             upHTML += `<div class="admin-group-card">
                                 <div class="admin-group-header">
-                                    <img src="${slipThumbUrl}" class="admin-group-slip-thumb" onclick="openSlipModal('${group.slipUrl}', '${firstMember.time}', '${firstMember.uid}')">
+                                    <img src="${slipThumbUrl}" class="admin-group-slip-thumb" onclick="openSlipModal('${group.slipUrl}', '${firstMember.time}', '${firstMember.uid}', '⏳ รอตรวจ')">
                                     <div class="admin-group-details">
                                         <b style="color:#8b5cf6">ยอดรวมสลิป: ${group.totalCost} บาท</b>
                                         <div style="font-size:12px;">${group.members.map(m => m.name).join(', ')}</div>
@@ -829,12 +829,7 @@
                 
                 document.getElementById('applyPenaltyBtn').style.display = (!isToday && r.stats.unpaid > 0) ? "block" : "none";
 
-                let allowEditHistory = false;
-                if (!isToday && currentViewDate !== "") {
-                    let tDateObj = new Date(currentViewDate + "T00:00:00+07:00");
-                    let todayObj = new Date(new Date().toLocaleDateString('en-US', {timeZone: 'Asia/Bangkok'}) + "T00:00:00+07:00");
-                    if (Math.floor((todayObj - tDateObj) / (1000 * 60 * 60 * 24)) <= 3) allowEditHistory = true;
-                }
+                let allowEditHistory = (!isToday && currentViewDate !== ""); // ปลดล็อกให้แก้ไขประวัติย้อนหลังได้ไม่จำกัดวัน
 
                 let allHTML = "";
                 r.todayList.forEach(a => {
@@ -842,17 +837,17 @@
                     if (!isFriend && a.name !== "โอนแทนเพื่อน") {
                         if (a.tierType === "STUDENT") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดออก</button>` : '';
                         else if (a.tierType === "VIP" || a.tierType === "YEARLY") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดสิทธิ์</button>` : '';
-                        else { promoteBtn = isToday ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_yearly', this)">👑 รายปี</button>` : ''; }
+                        else { promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_yearly', this)">👑 รายปี</button>` : ''; }
                     }
                     let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${a.time}', '${a.uid}', 'write_off', this)">🧹 ยกหนี้</button>` : '';
-                    let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}')">📄 ดูสลิป</button>` : '';
+                    let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}', '${a.status}')">📄 ดูสลิป</button>` : '';
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
                     let revertBtn = "";
                     if ((isToday || allowEditHistory) && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย") && !a.status.includes("ระบบ")) {
                         if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button> <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>`;
                         else revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>`;
                     }
-                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
+                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
             document.getElementById('adminAllArea').innerHTML = allHTML ? `<div class="fade-in">${allHTML}</div>` : "ยังไม่มีข้อมูล";
             }
@@ -1000,7 +995,7 @@
         finally { btn.disabled = false; btn.innerText = oldText; }
     }
 
-    function openSlipModal(driveUrl, time, uid) {
+    function openSlipModal(driveUrl, time, uid, status = "") {
         if(!driveUrl || driveUrl === "-") return;
         let fileIdMatch = driveUrl.match(/[-\w]{25,}/); 
         if(fileIdMatch && fileIdMatch[0]) {
@@ -1008,10 +1003,14 @@
             document.getElementById('slipModal').style.display = 'flex';
             document.getElementById('modalFallbackBtn').style.display = 'none';
             document.getElementById('modalLoader').style.display = 'block';
-            document.getElementById('modalAdminActionArea').style.display = 'block';
-            document.getElementById('modalApproveBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'confirmPay', this); };
-            document.getElementById('modalApproveBtn').innerText = "✅ สลิปถูกต้อง ยืนยันเงินเข้า";
-            document.getElementById('modalApproveBtn').disabled = false;
+            
+            if (status.includes("⏳") || status.includes("❌")) {
+                document.getElementById('modalAdminActionArea').style.display = 'block';
+                document.getElementById('modalApproveBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'confirmPay', this); };
+                document.getElementById('modalApproveBtn').innerText = "✅ สลิปถูกต้อง ยืนยันเงินเข้า";
+                document.getElementById('modalApproveBtn').disabled = false;
+            } else { document.getElementById('modalAdminActionArea').style.display = 'none'; }
+            
             let imgEl = document.getElementById('modalImg');
             imgEl.onload = function() { document.getElementById('modalLoader').style.display = 'none'; };
             imgEl.onerror = function() { document.getElementById('modalLoader').style.display = 'none'; document.getElementById('modalFallbackBtn').style.display = 'block'; document.getElementById('modalFallbackBtn').onclick = () => window.open(driveUrl, '_blank'); };
