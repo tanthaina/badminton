@@ -458,6 +458,10 @@
 
             if (result.checkedIn) { renderPersonalDashboard(result); } 
             else {
+                document.getElementById('personalDashboard').style.display = 'none';
+                document.getElementById('paymentSec').style.display = 'none';
+                document.getElementById('mainForm').style.display = 'block';
+                document.getElementById('friendsListArea').innerHTML = '';
                 try {
                     let savedFriends = localStorage.getItem('badminton_friends_' + userUid);
                     if (savedFriends) { JSON.parse(savedFriends).filter(f => f.trim() !== '').forEach(f => addFriendInput(f)); }
@@ -514,7 +518,7 @@
         if (res.userStatus !== "ไม่มีข้อมูล") {
             let myStatusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : (res.userStatus.includes("⚠️") ? "⚠️" : "❌"));
             let myActionBtn = "";
-            if (res.userStatus === "❌ ยังไม่จ่าย") myActionBtn = `<button onclick="cancelMyBill('${userUid}', '')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🗑️ ยกเลิก</button>`;
+            if (res.userStatus === "❌ ยังไม่จ่าย" || res.userStatus.includes("ฟรี") || res.userStatus.includes("เหมาจ่าย")) myActionBtn = `<button onclick="cancelMyBill('${userUid}', '')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🗑️ ยกเลิก</button>`;
             else if (res.userStatus === "⏳ รอแอดมินตรวจ") myActionBtn = `<button onclick="cancelMyBill('${userUid}', '')" style="background:#f59e0b; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🙋‍♂️ แจ้งขอลบ</button>`;
             html += `<div class="personal-row" style="align-items: center;"><span>คุณ (${res.tierName})</span><div style="display:flex; align-items:center;"><b>${res.userStatus} ${myStatusIcon}</b>${myActionBtn}</div></div>`;
         }
