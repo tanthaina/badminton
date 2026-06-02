@@ -362,6 +362,29 @@
 </div>
 
 <script>
+    // 🚨 Global Fetch Interceptor (เกราะป้องกันแอปหมุนค้างตลอดกาลในทุกๆ จุด)
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options) {
+        if (url && typeof url === 'string' && url.includes("script.google.com")) {
+            options = options || {};
+            let id;
+            if (!options.signal) {
+                const controller = new AbortController();
+                id = setTimeout(() => controller.abort(), 15000); // ตัดจบที่ 15 วินาที
+                options.signal = controller.signal;
+            }
+            try {
+                const res = await originalFetch(url, options);
+                if (id) clearTimeout(id);
+                return res;
+            } catch (e) {
+                if (id) clearTimeout(id);
+                throw e;
+            }
+        }
+        return originalFetch(url, options);
+    };
+
     // 🚨 Global Error Listener (ดักจับ JS แตกนอกเหนือจาก try-catch)
     window.addEventListener('error', function(e) {
         console.error("[GLOBAL_ERR] ข้อผิดพลาดระบบ:", e.error || e.message);
@@ -769,7 +792,8 @@
                         const group = groups[key];
                         if (group.isGroup) {
                             const firstMember = group.members[0];
-                            const slipThumbUrl = `https://drive.google.com/thumbnail?id=${group.slipUrl.match(/[-\w]{25,}/)[0]}&sz=w100`;
+                                const matchId = group.slipUrl.match(/[-\w]{25,}/);
+                                const slipThumbUrl = matchId ? `https://drive.google.com/thumbnail?id=${matchId[0]}&sz=w100` : "";
                             let membersHtml = "";
                             group.members.forEach(m => {
                                 membersHtml += `<div class="admin-sub-item">
@@ -1043,8 +1067,8 @@
                     });
                 }
                 document.getElementById('publicVipListArea').innerHTML = html;
-            } else { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">โหลดข้อมูลล้มเหลว</div>'; }
-        } catch (e) { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">โหลดข้อมูลล้มเหลว</div>'; }
+            } else { document.getElementById('publicVipListArea').innerHTML = `<div style="color:red; text-align:center;">${r.message || 'โหลดข้อมูลล้มเหลว'}</div>`; }
+        } catch (e) { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">⚠️ โหลดข้อมูลล้มเหลว กรุณาลองใหม่</div>'; }
     }
 </script>
 </body>
