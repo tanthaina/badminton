@@ -510,15 +510,24 @@
         document.getElementById('mainForm').style.display = 'none';
         
         let area = document.getElementById('personalListArea');
-        let statusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : "❌");
-        
-        let myStatusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : "❌");
-        let html = `<div class="personal-row"><span>คุณ (${res.tierName})</span><b>${res.userStatus} ${myStatusIcon}</b></div>`;
+        let html = "";
+        if (res.userStatus !== "ไม่มีข้อมูล") {
+            let myStatusIcon = res.userStatus.includes("✅") ? "✅" : (res.userStatus.includes("⏳") ? "⏳" : (res.userStatus.includes("⚠️") ? "⚠️" : "❌"));
+            let myActionBtn = "";
+            if (res.userStatus === "❌ ยังไม่จ่าย") myActionBtn = `<button onclick="cancelMyBill('${userUid}', '')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🗑️ ยกเลิก</button>`;
+            else if (res.userStatus === "⏳ รอแอดมินตรวจ") myActionBtn = `<button onclick="cancelMyBill('${userUid}', '')" style="background:#f59e0b; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🙋‍♂️ แจ้งขอลบ</button>`;
+            html += `<div class="personal-row" style="align-items: center;"><span>คุณ (${res.tierName})</span><div style="display:flex; align-items:center;"><b>${res.userStatus} ${myStatusIcon}</b>${myActionBtn}</div></div>`;
+        }
+
         res.friends.forEach((f) => { 
             let fName = typeof f === 'string' ? f : f.name;
+            let fRawName = typeof f === 'string' ? f : (f.rawName || f.name);
             let fStatus = typeof f === 'string' ? res.userStatus : f.status;
-            let fStatusIcon = fStatus.includes("✅") ? "✅" : (fStatus.includes("⏳") ? "⏳" : "❌");
-            html += `<div class="personal-row"><span>เพื่อนพ่วง: ${fName}</span><b>${fStatus} ${fStatusIcon}</b></div>`; 
+            let fStatusIcon = fStatus.includes("✅") ? "✅" : (fStatus.includes("⏳") ? "⏳" : (fStatus.includes("⚠️") ? "⚠️" : "❌"));
+            let fActionBtn = "";
+            if (fStatus === "❌ ยังไม่จ่าย") fActionBtn = `<button onclick="cancelMyBill('FRIEND_OF_${userUid}', '${fRawName}')" style="background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🗑️ ยกเลิก</button>`;
+            else if (fStatus === "⏳ รอแอดมินตรวจ") fActionBtn = `<button onclick="cancelMyBill('FRIEND_OF_${userUid}', '${fRawName}')" style="background:#f59e0b; color:white; border:none; border-radius:4px; font-size:11px; padding:2px 6px; cursor:pointer; margin-left:5px;">🙋‍♂️ แจ้งขอลบ</button>`;
+            html += `<div class="personal-row" style="align-items: center;"><span>เพื่อนพ่วง: ${fName}</span><div style="display:flex; align-items:center;"><b>${fStatus} ${fStatusIcon}</b>${fActionBtn}</div></div>`; 
         });
         area.innerHTML = `<div class="fade-in">${html}</div>`;
         
@@ -546,6 +555,23 @@
         } else { document.getElementById('paymentSec').style.display = 'none'; }
         
         document.getElementById('personalDashboard').style.display = 'block';
+    }
+
+    async function cancelMyBill(tUid, tName) {
+        if (!confirm("⚠️ ต้องการยกเลิก/แจ้งขอลบ รายการนี้ใช่หรือไม่?")) return;
+        try {
+            document.getElementById('personalListArea').style.opacity = "0.5";
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "cancelBill", uid: userUid, targetUid: tUid, targetName: tName }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                showToast("✅ ดำเนินการสำเร็จ", "success");
+                await refreshPersonalState();
+            } else { showToast(r.message || "เกิดข้อผิดพลาด", "error"); }
+        } catch (e) {
+            console.error(e); showToast("⚠️ การเชื่อมต่อขัดข้อง", "error");
+        } finally {
+            document.getElementById('personalListArea').style.opacity = "1";
+        }
     }
 
     function switchTab(target) {
@@ -806,9 +832,12 @@
                                 const slipThumbUrl = matchId ? `https://drive.google.com/thumbnail?id=${matchId[0]}&sz=w100` : "";
                             let membersHtml = "";
                             group.members.forEach(m => {
+                                    let reqDeleteBtn = m.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                                 membersHtml += `<div class="admin-sub-item">
                                     <span>${m.name} (${m.cost} บ.)</span>
+                                        <span>${m.name} (${m.cost} บ.) <br><span style="color:#ef4444; font-size:11px; font-weight:bold;">${m.status}</span></span>
                                     <div>
+                                            ${reqDeleteBtn}
                                         <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับ</button>
                                         <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${m.time}', '${m.uid}', 'write_off', this)">🧹 ยกหนี้</button>
                                     </div>
@@ -830,8 +859,9 @@
                             </div>`;
                         } else { // Individual, no slip
                             const u = group.members[0];
+                            let reqDeleteBtn = u.status === "⚠️ ขอลบรายการ" ? `<button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${u.time}', '${u.uid}', 'delete', this)">🗑️ อนุมัติลบ</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${u.time}', '${u.uid}', 'rejectDelete', this)">❌ ปฏิเสธขอลบ</button>` : '';
                             let noteTxt = (u.note && u.note !== "-") ? `<div style="font-size:12px; color:#2563eb; margin-top:3px; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${u.note}</div>` : '';
-                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;"><button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
+                            upHTML += `<div class="admin-individual-card"><b>${u.name}</b> (ยอด ${u.cost} บาท) ${noteTxt}<span style="font-size: 12px; color: #ef4444; font-weight: bold; display:block; margin-top:2px;">${u.status}</span><div style="margin-top:6px;">${reqDeleteBtn} <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${u.time}', '${u.uid}', 'confirmPay', this)">✅ ยืนยันเงินเข้า</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${u.time}', '${u.uid}', 'write_off', this)">🧹 ยกหนี้</button></div></div>`;
                         }
                     }
                 unpaidArea.innerHTML = upHTML ? `<div class="fade-in">${upHTML}</div>` : "ไม่มีรายการค้างชำระ";
@@ -849,7 +879,7 @@
                         else if (a.tierType === "VIP" || a.tierType === "YEARLY") promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#dc2626;" onclick="adminAction('${a.time}', '${a.uid}', 'revoke', this)">❌ ปลดสิทธิ์</button>` : '';
                         else { promoteBtn = (isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#3b82f6;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_student', this)">🎓 นศ.</button> <button class="admin-action-btn" style="background:#f59e0b;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_vip', this)">⭐ รายเดือน</button> <button class="admin-action-btn" style="background:#d97706;" onclick="adminAction('${a.time}', '${a.uid}', 'promote_yearly', this)">👑 รายปี</button>` : ''; }
                     }
-                    let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${a.time}', '${a.uid}', 'write_off', this)">🧹 ยกหนี้</button>` : '';
+                    let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳") || a.status.includes("⚠️"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${a.time}', '${a.uid}', 'write_off', this)">🧹 ยกหนี้</button>` : '';
                     let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}', '${a.status}')">📄 ดูสลิป</button>` : '';
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
                     let revertBtn = "";
@@ -872,6 +902,7 @@
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
         if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return;
         if (manageType === 'write_off' && !confirm("⚠️ ยืนยันการยกยอดหนี้สูญให้รายการนี้? (ยอดจะกลายเป็น 0 บาท)")) return;
+        if (manageType === 'rejectDelete' && !confirm("⚠️ ปฏิเสธคำขอลบ และเตะกลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
         if (manageType === 'rejectSlip' && !confirm("⚠️ ยืนยันการปฏิเสธสลิป?\n(สลิปจะถูกลบ และสถานะจะแจ้งผู้ใช้ว่า 'สลิปไม่ถูกต้อง')")) return;
         if (manageType === 'revertToPending' && !confirm("⚠️ ดึงรายการนี้กลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
         if (manageType === 'rejectPaySingle' && !confirm("⚠️ ยืนยันดึงกลับไปเป็น 'ยังไม่จ่าย' ใช่หรือไม่?")) return;
