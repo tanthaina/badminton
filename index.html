@@ -300,7 +300,7 @@
         <input type="month" id="vipRenewMonth" style="width:100%; padding:12px; margin: 8px 0 15px; border-radius:8px; border: 1px solid #d1d5db; font-size: 15px;">
         <div style="display:flex; gap:10px;">
             <button class="btn-secondary" onclick="document.getElementById('vipRenewModal').style.display='none'">ยกเลิก</button>
-            <button class="btn" onclick="submitRenewVip(this)" style="margin-top:10px;">✅ ยืนยันต่ออายุ</button>
+            <button id="vipRenewConfirmBtn" class="btn" onclick="submitRenewVip(this)" style="margin-top:10px;">✅ ยืนยันต่ออายุ</button>
         </div>
     </div>
 </div>
@@ -785,13 +785,16 @@
                 let badge = v.tierType === 'YEARLY' ? `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายปี</span>` : '';
                 expHtml += `<div class="admin-sub-item" style="padding: 8px 0;">
                     <div><b style="color:#ef4444;">${v.name}</b> ${badge} <div style="font-size:11px;">(ต่ออายุล่าสุด: ${v.date || 'ไม่มีประวัติ'})</div></div>
-                    <div><button class="admin-action-btn" style="background:#f59e0b;" onclick="openRenewModal('${v.uid}', '${safeNameForJS}', '${v.tierType}', '${v.date}')">🔄 ต่ออายุ</button><button class="admin-action-btn" style="background:#ef4444;" onclick="removeVip('${v.uid}', '${safeNameForJS}', this)">🗑️</button></div>
+                    <div><button class="admin-action-btn" style="background:#f59e0b;" onclick="openRenewModal('${v.uid}', '${safeNameForJS}', '${v.tierType}', '${v.date}', false)">🔄 ต่ออายุ</button><button class="admin-action-btn" style="background:#ef4444;" onclick="removeVip('${v.uid}', '${safeNameForJS}', this)">🗑️</button></div>
                 </div>`;
             } else {
                 let badge = v.tierType === 'YEARLY' ? `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายปี</span>` : '';
                 actHtml += `<div class="admin-sub-item" style="padding: 8px 0;">
                     <div><b style="color:#16a34a;">${v.name}</b> ${badge} <div style="font-size:11px;">(ต่ออายุเมื่อ: ${v.date})</div></div>
-                    <span class="icon-badge">✅</span>
+                    <div>
+                        <button class="admin-action-btn" style="background:#3b82f6;" onclick="openRenewModal('${v.uid}', '${safeNameForJS}', '${v.tierType}', '${v.date}', true)">✏️ แก้ไข</button>
+                        <button class="admin-action-btn" style="background:#6b7280;" onclick="undoRenewVip('${v.uid}', '${safeNameForJS}', this)">↩️ ดึงกลับ</button>
+                    </div>
                 </div>`;
             }
         });
@@ -800,13 +803,14 @@
     function filterVipList() { renderVipList(); }
 
     let currentRenewUid = ""; let currentRenewName = "";
-    function openRenewModal(u, n, tierType, currentMDate) {
+    function openRenewModal(u, n, tierType, currentMDate, isEdit = false) {
         currentRenewUid = u; currentRenewName = n;
-        document.getElementById('vipRenewName').innerText = "ต่ออายุ: " + n;
+        document.getElementById('vipRenewName').innerText = (isEdit ? "✏️ แก้ไขสิทธิ์: " : "🔄 ต่ออายุ: ") + n;
         document.getElementById('vipRenewTier').value = (tierType === 'YEARLY') ? 'รายปี' : 'รายเดือน';
         let d = new Date();
         if (currentMDate && currentMDate !== "-") { let parts = currentMDate.split("-"); if(parts.length >= 2) d = new Date(parts[0], parts[1]-1); }
         document.getElementById('vipRenewMonth').value = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2, '0');
+        document.getElementById('vipRenewConfirmBtn').innerText = isEdit ? "✅ ยืนยันการแก้ไข" : "✅ ยืนยันต่ออายุ";
         document.getElementById('vipRenewModal').style.display = 'flex';
     }
 
@@ -815,7 +819,7 @@
         let m = document.getElementById('vipRenewMonth').value;
         if (!m) return showToast("กรุณาเลือกเดือนเริ่มต้น", "error");
         document.getElementById('vipRenewModal').style.display = 'none';
-        handleVipAction("renewVip", currentRenewUid, { newTier: t, startDate: m }, btn, null, `✅ ต่ออายุ ${currentRenewName} สำเร็จ!`);
+        handleVipAction("renewVip", currentRenewUid, { newTier: t, startDate: m }, btn, null, `✅ บันทึกข้อมูล ${currentRenewName} สำเร็จ!`);
     }
 
     async function handleVipAction(actionName, tUid, payloadExtra, btn, confirmMsg, successMsg) {
@@ -828,6 +832,7 @@
             if (r.status === "success") { showToast(successMsg, "success"); loadVipData(); } else { showToast(r.message, "error"); if(btn){btn.disabled = false; btn.innerText = oldTxt;} }
         } catch(e) { console.error("[VIP_02] Action Error:", e); showToast("⚠️ เชื่อมต่อล้มเหลว [VIP_02]", "error"); if(btn){btn.disabled = false; btn.innerText = oldTxt;} }
     }
+    function undoRenewVip(u, n, b) { handleVipAction("undoRenewVip", u, {}, b, `⚠️ ยืนยัน "ยกเลิกการต่ออายุ" ของ "${n}" ใช่หรือไม่?\n(รายชื่อจะถูกดึงกลับไปอยู่โซนสีแดง)`, `↩️ ยกเลิกการต่ออายุ ${n} สำเร็จ!`); }
     function removeVip(u, n, b) { handleVipAction("removeVip", u, {}, b, `⚠️ ยืนยัน "ลบสิทธิ์ VIP ถาวร" ของ "${n}" ใช่หรือไม่?\n(หากลบไปแล้ว ต้องไปเพิ่มให้ใหม่ในหน้ากระดาน)`, `🗑️ ลบสิทธิ์ ${n} ถาวรแล้ว`); }
 
     async function submitWalkIn(btn) {
