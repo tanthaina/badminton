@@ -627,7 +627,7 @@
         } finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
     }
 
-    function copyAcc() { navigator.clipboard.writeText("020219081907"); showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success"); }
+    function copyAcc() { navigator.clipboard.writeText("020219081907").then(() => showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success")).catch(e => showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ กรุณาคัดลอกด้วยตนเอง", "error")); }
 
     async function loadAdminData() {
         const btn = document.getElementById('refreshAdminBtn');
@@ -926,7 +926,7 @@
         if (txtUnpaid) msg += `❌ *ยังไม่ได้ชำระเงิน:*\n${txtUnpaid}\n`;
         if (txtCheck) msg += `⏳ *ส่งสลิปแล้ว (รอแอดมินกดตรวจ):*\n${txtCheck}\n`;
         msg += `💰 *ยอดค้างรวมทั้งหมด: ${totalDebt} บาท*\n💳 บัญชี ธ.ก.ส. : *020219081907*\n🙏 รบกวนสมาชิกตรวจสอบและโอนเคลียร์ยอดด้วยนะครับ`;
-        navigator.clipboard.writeText(msg).then(() => { showToast("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ", "success"); });
+        navigator.clipboard.writeText(msg).then(() => { showToast("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ", "success"); }).catch(e => { showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ กรุณาคลุมดำคัดลอกเองครับ", "error"); });
     }
 </script>
 </body>
