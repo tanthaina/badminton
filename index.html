@@ -167,6 +167,7 @@
 
     <div id="dashboardTab" style="display: none;">
         <div class="card">
+            <button onclick="openPublicVipModal()" class="btn-secondary" style="margin-top: 0; margin-bottom: 15px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; border: none; font-size: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🏆 ทำเนียบสมาชิกรายเดือน/รายปี</button>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: var(--primary-dark);">👥 นักกีฬา (12 ชม.)</h3>
                 <button id="refreshDashBtn" onclick="loadDashboardData()" class="admin-action-btn" style="background: var(--primary); margin: 0;">🔄 อัปเดต</button>
@@ -188,6 +189,36 @@
             </div>
             <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
             <button id="applyPenaltyBtn" onclick="applyPenalty()" style="display:none; background:#ef4444; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">🚨 ปรับคนค้างจ่าย 100 บ.</button>
+        </div>
+
+        <div class="card" style="border: 2px solid #10b981;" id="monthlyReportCard">
+            <h4 style="margin: 0 0 10px 0; color: #059669;">📈 สรุปบัญชีรายเดือน</h4>
+            <div style="display: flex; gap: 8px;">
+                <input type="month" id="reportMonthInput" style="flex:1;">
+                <button onclick="fetchMonthlyReport()" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ดึงยอด</button>
+            </div>
+            
+            <div id="reportContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #a7f3d0; padding-top: 15px;">
+                <div style="text-align: center; background: #ecfdf5; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                    <div style="font-size: 14px; color: #047857; font-weight: bold;">💰 รายรับรวมทั้งเดือน</div>
+                    <div style="font-size: 28px; color: #059669; font-weight: bold;" id="rep_total">0</div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1; background: #f3f4f6; padding: 10px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 12px; color: #4b5563;">🏸 ค่าสนามรายวัน</div>
+                        <div style="font-size: 18px; color: #374151; font-weight: bold; margin-top: 5px;" id="rep_daily">0</div>
+                    </div>
+                    <div style="flex: 1; background: #fef08a; padding: 10px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 12px; color: #a16207;">👑 ค่าสมาชิก (VIP)</div>
+                        <div style="font-size: 18px; color: #854d0e; font-weight: bold; margin-top: 5px;" id="rep_vip">0</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; padding: 0 5px;">
+                    <div>👥 จำนวนคนตี: <b id="rep_pax" style="color:#1f2937;">0</b> ครั้ง</div>
+                    <div>🔴 ยอดค้างชำระ: <b id="rep_unpaid" style="color:#dc2626;">0</b> บาท</div>
+                </div>
+                <button onclick="copyMonthlyReport()" class="btn" style="background: #059669; margin-top: 15px;">📋 คัดลอกรายงานสรุป</button>
+            </div>
         </div>
 
         <div class="card" style="border: 2px solid #fbbf24;" id="vipManageCard">
@@ -316,6 +347,17 @@
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://liff.line.me/2010144915-M3je0urZ" alt="QR Code" style="width: 220px; height: 220px; margin: 0 auto; border-radius: 10px; border: 2px solid #e5e7eb; padding: 10px; background: white;">
         <a href="https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=https://liff.line.me/2010144915-M3je0urZ" target="_blank" download="Badminton_QR.png" class="btn-secondary" style="display: block; text-decoration: none; color: #1d4ed8; margin-top: 15px; font-size: 14px; background: #eff6ff; border-color: #bfdbfe;">💾 บันทึกรูป QR Code (ชัดพิเศษ)</a>
         <button class="btn" onclick="document.getElementById('qrModal').style.display='none'" style="margin-top:10px;">❌ ปิดหน้าต่าง</button>
+    </div>
+</div>
+
+<!-- ป๊อปอัป ทำเนียบ VIP สาธารณะ -->
+<div id="publicVipModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:3000; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box;" onclick="if(event.target === this) document.getElementById('publicVipModal').style.display='none';">
+    <div class="card fade-in" style="width: 100%; max-width: 400px; margin: 0; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+        <h4 style="margin: 0 0 10px 0; color: #d97706; text-align: center; border-bottom: 2px dashed #fcd34d; padding-bottom: 10px;">🏆 ทำเนียบสมาชิก VIP (เดือนนี้)</h4>
+        <div id="publicVipListArea" style="overflow-y: auto; flex: 1; padding: 10px 0; font-size: 14px; color: #4b5563;">
+            <div class="loader"></div>
+        </div>
+        <button class="btn" onclick="document.getElementById('publicVipModal').style.display='none'" style="margin-top:15px; background: #6b7280;">❌ ปิดหน้าต่าง</button>
     </div>
 </div>
 
@@ -636,10 +678,15 @@
         if (btn) { btn.disabled = true; btn.innerText = "⏳ กำลังโหลด..."; }
         currentViewDate = ""; document.getElementById('resetTodayBtn').style.display = "none"; document.getElementById('historyDateInput').value = "";
         document.getElementById('applyPenaltyBtn').style.display = "none";
+        let today = new Date();
+        document.getElementById('reportMonthInput').value = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('reportContentArea').style.display = "none";
         document.getElementById('vipContentArea').style.display = "none"; document.getElementById('vipSearchInput').value = "";
         document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
         document.getElementById('unpaidCardBox').style.display = "block";
         document.getElementById('walkInCard').style.display = "block";
+        document.getElementById('monthlyReportCard').style.display = "block";
+        document.getElementById('vipManageCard').style.display = "block";
         await renderAdminUI(getApiUrl(), { action: "getAdminData", uid: userUid }, true);
         if (btn) { btn.disabled = false; btn.innerText = "🔄 รีเฟรชข้อมูล"; }
     }
@@ -654,8 +701,51 @@
         document.getElementById('adminPanelTitle').innerText = "📅 ประวัติยอดเงิน ณ วันที่ " + formattedDate;
         document.getElementById('adminListTitle').innerText = "👥 รายชื่อนักกีฬาเมื่อ " + formattedDate;
         document.getElementById('resetTodayBtn').style.display = "block"; document.getElementById('unpaidCardBox').style.display = "none"; document.getElementById('walkInCard').style.display = "none";
+        document.getElementById('monthlyReportCard').style.display = "none";
+        document.getElementById('vipManageCard').style.display = "none";
         await renderAdminUI(getApiUrl(), { action: "getHistoryData", uid: userUid, targetDate: dateVal }, false);
         if(btn) { btn.disabled = false; btn.innerText = "🔍 ค้นหา"; }
+    }
+
+    async function fetchMonthlyReport() {
+        let mVal = document.getElementById('reportMonthInput').value;
+        if(!mVal) { showToast("กรุณาเลือกเดือนก่อนครับ", "error"); return; }
+        let btn = document.querySelector('button[onclick="fetchMonthlyReport()"]');
+        btn.disabled = true; btn.innerText = "⏳...";
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getMonthlyReport", uid: userUid, targetMonth: mVal }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                document.getElementById('reportContentArea').style.display = 'block';
+                document.getElementById('rep_total').innerText = r.stats.total.toLocaleString();
+                document.getElementById('rep_daily').innerText = r.stats.daily.toLocaleString();
+                document.getElementById('rep_vip').innerText = r.stats.vip.toLocaleString();
+                document.getElementById('rep_pax').innerText = r.stats.pax.toLocaleString();
+                document.getElementById('rep_unpaid').innerText = r.stats.unpaid.toLocaleString();
+            } else { showToast(r.message, "error"); }
+        } catch (e) {
+            console.error("[REP_01] Fetch Report Error:", e);
+            showToast("⚠️ โหลดข้อมูลล้มเหลว [REP_01]", "error");
+        } finally { btn.disabled = false; btn.innerText = "🔍 ดึงยอด"; }
+    }
+
+    function copyMonthlyReport() {
+        let mVal = document.getElementById('reportMonthInput').value;
+        let [y, m] = mVal.split("-");
+        let monthName = new Date(y, m - 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+        let total = document.getElementById('rep_total').innerText;
+        let daily = document.getElementById('rep_daily').innerText;
+        let vip = document.getElementById('rep_vip').innerText;
+        let pax = document.getElementById('rep_pax').innerText;
+        let unpaid = document.getElementById('rep_unpaid').innerText;
+        let msg = `📈 *สรุปบัญชีชมรมแบดมินตันตากฟ้า*\nประจำเดือน: ${monthName}\n\n`;
+        msg += `💰 *รายรับรวมทั้งเดือน: ${total} บาท*\n`;
+        msg += `├ 🏸 ค่าสนามรายวัน: ${daily} บาท\n`;
+        msg += `└ 👑 ค่าสมาชิก VIP: ${vip} บาท\n\n`;
+        msg += `👥 จำนวนการใช้สนาม: ${pax} ครั้ง\n`;
+        if (unpaid !== "0") msg += `🔴 ยอดหนี้ค้างชำระ: ${unpaid} บาท\n`;
+        msg += `\n🙏 ขอบคุณสมาชิกทุกท่านที่ให้ความร่วมมือครับ`;
+        navigator.clipboard.writeText(msg).then(() => { showToast("📋 คัดลอกรายงานสรุปสำเร็จ", "success"); }).catch(e => showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ", "error"));
     }
 
     async function renderAdminUI(url, bodyObj, isToday) {
@@ -929,6 +1019,26 @@
         if (txtCheck) msg += `⏳ *ส่งสลิปแล้ว (รอแอดมินกดตรวจ):*\n${txtCheck}\n`;
         msg += `💰 *ยอดค้างรวมทั้งหมด: ${totalDebt} บาท*\n💳 บัญชี ธ.ก.ส. : *020219081907*\n🙏 รบกวนสมาชิกตรวจสอบและโอนเคลียร์ยอดด้วยนะครับ`;
         navigator.clipboard.writeText(msg).then(() => { showToast("📋 คัดลอกข้อความแจ้งยอดคงค้างแล้ว นำไปวางในกลุ่มไลน์ได้ทันทีครับ", "success"); }).catch(e => { showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ กรุณาคลุมดำคัดลอกเองครับ", "error"); });
+    }
+
+    async function openPublicVipModal() {
+        document.getElementById('publicVipModal').style.display = 'flex';
+        document.getElementById('publicVipListArea').innerHTML = '<div class="loader"></div>';
+        try {
+            let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getPublicVipData" }) });
+            let r = await res.json();
+            if (r.status === "success") {
+                let html = "";
+                if (r.data.length === 0) html = "<div style='text-align:center; color:#9ca3af;'>ยังไม่มีสมาชิกที่ต่ออายุในเดือนนี้</div>";
+                else {
+                    r.data.forEach(v => {
+                        let badge = v.tierType === 'YEARLY' ? `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายปี</span>` : `<span class="badge badge-vip" style="font-size:10px; padding:2px 6px;">รายเดือน</span>`;
+                        html += `<div style="padding: 10px; border-bottom: 1px dashed #e5e7eb; display: flex; justify-content: space-between; align-items: center;"><b>${v.name}</b> ${badge}</div>`;
+                    });
+                }
+                document.getElementById('publicVipListArea').innerHTML = html;
+            } else { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">โหลดข้อมูลล้มเหลว</div>'; }
+        } catch (e) { document.getElementById('publicVipListArea').innerHTML = '<div style="color:red; text-align:center;">โหลดข้อมูลล้มเหลว</div>'; }
     }
 </script>
 </body>
