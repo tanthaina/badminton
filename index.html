@@ -776,7 +776,6 @@
                                     <span>${m.name} (${m.cost} บ.)</span>
                                     <div>
                                         <button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${m.time}', '${m.uid}', 'confirmPaySingle', this)">✅ รับ</button>
-                                        <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${m.time}', '${m.uid}', 'rejectPaySingle', this)">❌ ปฏิเสธ</button>
                                         <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${m.time}', '${m.uid}', 'write_off', this)">🧹 ยกหนี้</button>
                                     </div>
                                 </div>`;
@@ -824,7 +823,11 @@
                     let historyPayBtn = (!isToday && allowEditHistory && (a.status.includes("❌") || a.status.includes("⏳"))) ? `<button class="admin-action-btn" style="background:#16a34a;" onclick="adminAction('${a.time}', '${a.uid}', 'confirmPay', this)">✅ รับเงินย้อนหลัง</button> <button class="admin-action-btn" style="background:#6b7280;" onclick="adminAction('${a.time}', '${a.uid}', 'write_off', this)">🧹 ยกหนี้</button>` : '';
                     let slipBtnAll = (a.slipUrl && a.slipUrl !== "-") ? `<button class="admin-action-btn" style="background:#0284c7;" onclick="openSlipModal('${a.slipUrl}', '${a.time}', '${a.uid}')">📄 ดูสลิป</button>` : '';
                     let noteTxtAll = (a.note && a.note !== "-") ? `<span style="color:#2563eb; font-weight:bold; word-break: break-all;"> [หมายเหตุ: ${a.note}]</span>` : '';
-                    let revertBtn = (isToday && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย")) ? `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>` : '';
+                    let revertBtn = "";
+                    if ((isToday || allowEditHistory) && a.status.includes("✅") && a.cost > 0 && !a.status.includes("ฟรี") && !a.status.includes("เหมาจ่าย") && !a.status.includes("ระบบ")) {
+                        if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button> <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>`;
+                        else revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>`;
+                    }
                     allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || a.name === "โอนแทนเพื่อน") ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
             document.getElementById('adminAllArea').innerHTML = allHTML ? `<div class="fade-in">${allHTML}</div>` : "ยังไม่มีข้อมูล";
@@ -840,6 +843,9 @@
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
         if (manageType === 'delete' && !confirm("⚠️ ยืนยันการลบรายชื่อ? (หากลบชื่อเจ้าภาพ เพื่อนทั้งหมดจะถูกลบตามไปด้วย)")) return;
         if (manageType === 'write_off' && !confirm("⚠️ ยืนยันการยกยอดหนี้สูญให้รายการนี้? (ยอดจะกลายเป็น 0 บาท)")) return;
+        if (manageType === 'rejectSlip' && !confirm("⚠️ ยืนยันการปฏิเสธสลิป?\n(สลิปจะถูกลบ และสถานะจะแจ้งผู้ใช้ว่า 'สลิปไม่ถูกต้อง')")) return;
+        if (manageType === 'revertToPending' && !confirm("⚠️ ดึงรายการนี้กลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
+        if (manageType === 'rejectPaySingle' && !confirm("⚠️ ยืนยันดึงกลับไปเป็น 'ยังไม่จ่าย' ใช่หรือไม่?")) return;
         btnElement.disabled = true; btnElement.innerText = "⏳...";
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
