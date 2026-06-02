@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🏸 ระบบจัดการก๊วนแบดมินตัน</title>
+    <title>🏸 ระบบจัดการชมรมแบดมินตันตากฟ้า</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <!-- 
     ==========================================
@@ -103,7 +103,7 @@
     <div id="checkinTab" style="display: none;">
         
         <div id="paymentSec" class="account-box" style="display: none;">
-            <p style="color: #1d4ed8; font-weight: bold; margin-top: 0; font-size: 15px;">💳 โอนเงินเข้าบัญชีก๊วนแบดมินตัน</p>
+            <p style="color: #1d4ed8; font-weight: bold; margin-top: 0; font-size: 15px;">💳 โอนเงินเข้าบัญชีชมรมแบดมินตันตากฟ้า</p>
             <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
                 <span style="font-size: 13px; color: #4b5563;">ธนาคาร ธ.ก.ส.</span><br>
                 <strong style="font-size: 24px; color: #1e3a8a;">020219081907</strong>
@@ -912,7 +912,7 @@
             let appendText = `- ${item.name} (${item.cost} บาท)${displayNote ? ' [📝 '+displayNote+']' : ''}\n`;
             if (item.status.includes("รอแอดมินตรวจ") || item.name === "โอนแทนเพื่อน") txtCheck += appendText; else txtUnpaid += appendText;
         });
-        let msg = `📢 *สรุปยอดค้างชำระ ก๊วนแบดมินตัน*\n📅 ประจำวันที่: ${checkDateStr}\n\n`;
+        let msg = `📢 *สรุปยอดค้างชำระ ชมรมแบดมินตันตากฟ้า*\n📅 ประจำวันที่: ${checkDateStr}\n\n`;
         if (txtUnpaid) msg += `❌ *ยังไม่ได้ชำระเงิน:*\n${txtUnpaid}\n`;
         if (txtCheck) msg += `⏳ *ส่งสลิปแล้ว (รอแอดมินกดตรวจ):*\n${txtCheck}\n`;
         msg += `💰 *ยอดค้างรวมทั้งหมด: ${totalDebt} บาท*\n💳 บัญชี ธ.ก.ส. : *020219081907*\n🙏 รบกวนสมาชิกตรวจสอบและโอนเคลียร์ยอดด้วยนะครับ`;
