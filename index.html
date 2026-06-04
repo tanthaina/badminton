@@ -82,6 +82,7 @@
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeSlideUp 0.4s ease-out forwards; }
+        .fade-in, tr.fade-in, #slipModal, #manualModal, #qrModal, #publicVipModal { will-change: opacity, transform; }
         tr.fade-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
 </head>
@@ -230,7 +231,7 @@
                 <button onclick="loadVipData(this)" class="admin-action-btn" style="background: #f59e0b; margin: 0; padding: 8px 12px;">🔄 โหลดรายชื่อ</button>
             </div>
             <div id="vipContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #fcd34d; padding-top: 10px;">
-                <input type="text" id="vipSearchInput" placeholder="🔍 พิมพ์ค้นหาชื่อสมาชิก..." onkeyup="filterVipList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box;">
+                <input type="text" id="vipSearchInput" placeholder="🔍 พิมพ์ค้นหาชื่อสมาชิก..." onkeyup="debounceFilterVipList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box;">
                 <h5 style="margin: 10px 0 5px 0; color: #ef4444;">❌ หมดอายุ (รอต่ออายุ)</h5>
                 <div id="vipExpiredList" style="font-size: 14px; color: #6b7280; max-height: 250px; overflow-y: auto; background: #fef2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px;"></div>
                 <h5 style="margin: 10px 0 5px 0; color: #16a34a;">✅ ต่ออายุแล้ว (เดือนนี้)</h5>
@@ -972,6 +973,9 @@
         document.getElementById('vipExpiredList').innerHTML = expHtml || "ไม่มีรายการ"; document.getElementById('vipActiveList').innerHTML = actHtml || "ไม่มีรายการ";
     }
     function filterVipList() { renderVipList(); }
+    
+    let searchVipTimeout;
+    function debounceFilterVipList() { clearTimeout(searchVipTimeout); searchVipTimeout = setTimeout(filterVipList, 300); }
 
     let currentRenewUid = ""; let currentRenewName = "";
     function openRenewModal(u, n, tierType, currentMDate, isEdit = false) {
