@@ -322,7 +322,8 @@
     <img id="modalImg" src="">
     <button id="modalFallbackBtn" style="display:none; margin-top:15px; background:#3b82f6; color:white; border:none; padding:10px 25px; border-radius:8px; font-weight:bold; cursor:pointer;">🌐 เปิดดูสลิปในเบราว์เซอร์</button>
     <div id="modalAdminActionArea" style="margin-top: 15px; width:90%; text-align:center; display:none;">
-         <button id="modalApproveBtn" style="background:#16a34a; color:white; border:none; padding:12px 30px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; width:100%; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">✅ สลิปถูกต้อง ยืนยันเงินเข้า</button>
+         <button id="modalApproveBtn" style="background:#16a34a; color:white; border:none; padding:12px 30px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; width:100%; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-bottom: 10px;">✅ สลิปถูกต้อง ยืนยันเงินเข้า</button>
+         <button id="modalRejectBtn" style="background:#ef4444; color:white; border:none; padding:12px 30px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; width:100%; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">❌ ปฏิเสธสลิป</button>
     </div>
     <button onclick="closeSlipModal()" style="margin-top:15px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">❌ ปิดหน้าต่าง</button>
 </div>
@@ -998,7 +999,10 @@
                                     ${(group.note && group.note !== "-") ? `<div style="font-size:12px; color:#2563eb; font-weight:bold; word-break: break-all;">📝 หมายเหตุ: ${group.note}</div>` : ''}
                                     </div>
                                 </div>
-                                <button class="admin-action-btn" style="background:#16a34a; width:100%; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'confirmPay', this)">✅ อนุมัติทั้งสลิป (${group.members.length} คน)</button>
+                                <div style="display:flex; gap:5px;">
+                                    <button class="admin-action-btn" style="background:#16a34a; flex:1; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'confirmPay', this)">✅ อนุมัติสลิป</button>
+                                    <button class="admin-action-btn" style="background:#ef4444; flex:1; padding:8px;" onclick="adminAction('${firstMember.time}', '${firstMember.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>
+                                </div>
                                 <div style="text-align:center; font-size:12px; margin-top:5px; color:#6b7280;">หรือจัดการแยกคน:</div>
                                 <div class="admin-sub-items-container">${membersHtml}</div>
                             </div>`;
@@ -1214,8 +1218,9 @@
             if (status.includes("⏳") || status.includes("❌")) {
                 document.getElementById('modalAdminActionArea').style.display = 'block';
                 document.getElementById('modalApproveBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'confirmPay', this); };
-                document.getElementById('modalApproveBtn').innerText = "✅ สลิปถูกต้อง ยืนยันเงินเข้า";
                 document.getElementById('modalApproveBtn').disabled = false;
+                document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
+                document.getElementById('modalRejectBtn').disabled = false;
             } else { document.getElementById('modalAdminActionArea').style.display = 'none'; }
             
             let imgEl = document.getElementById('modalImg');
