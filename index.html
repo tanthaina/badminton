@@ -85,6 +85,15 @@
         .fade-in { animation: fadeSlideUp 0.4s ease-out forwards; }
         .fade-in, tr.fade-in, #slipModal, #manualModal, #qrModal, #publicVipModal { will-change: opacity, transform; }
         tr.fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    
+        /* 🌟 Skeleton Loading */
+        .skeleton { background: #e5e7eb; background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%); border-radius: 8px; background-size: 200% 100%; animation: 1.5s shine linear infinite; }
+        .skeleton-text { height: 16px; margin-bottom: 8px; width: 100%; }
+        .skeleton-text.short { width: 60%; }
+        .skeleton-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; }
+        .skeleton-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px dashed #e5e7eb; }
+        .skeleton-block { height: 60px; width: 100%; border-radius: 10px; }
+        @keyframes shine { to { background-position-x: -200%; } }
     </style>
 </head>
 <body>
@@ -98,8 +107,11 @@
 
 <div class="container">
     <div id="loadingSec" class="card" style="text-align: center;">
-        <div class="loader"></div>
-        <p style="color:#6b7280; font-size:14px;">กำลังโหลดระบบ...</p>
+        <div class="skeleton skeleton-avatar" style="margin: 0 auto 10px auto; width: 75px; height: 75px;"></div>
+        <div class="skeleton skeleton-text short" style="margin: 0 auto 15px auto;"></div>
+        <div class="skeleton skeleton-block" style="margin-bottom: 10px;"></div>
+        <div class="skeleton skeleton-block"></div>
+        <p style="color:#6b7280; font-size:14px; margin-top: 15px;">กำลังโหลดระบบ...</p>
     </div>
 
     <div id="checkinTab" style="display: none;">
@@ -392,7 +404,9 @@
     <div class="card fade-in" style="width: 100%; max-width: 400px; margin: 0; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
         <h4 style="margin: 0 0 10px 0; color: #d97706; text-align: center; border-bottom: 2px dashed #fcd34d; padding-bottom: 10px;">🏆 ทำเนียบสมาชิก VIP (เดือนนี้)</h4>
         <div id="publicVipListArea" style="overflow-y: auto; flex: 1; padding: 10px 0; font-size: 14px; color: #4b5563;">
-            <div class="loader"></div>
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
         </div>
         <button class="btn" onclick="document.getElementById('publicVipModal').style.display='none'" style="margin-top:15px; background: #6b7280;">❌ ปิดหน้าต่าง</button>
     </div>
@@ -508,7 +522,7 @@
                 document.getElementById('checkinTab').style.display = 'block';
                 
                 // เด้งคู่มืออัตโนมัติหากยังไม่เคยกดรับทราบเงื่อนไข
-                if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); }
+                try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
             } else liff.login();
         } catch (err) { 
             console.error("[INIT_01] LIFF/System Init Error:", err);
@@ -706,10 +720,10 @@
         
         document.querySelectorAll(selector).forEach(i => { if (i.value.trim() !== "") friendsArray.push(i.value.trim()); });
         if (type === 'MAIN') {
-            localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
             // 🌟 บันทึกชื่อเพื่อนเข้าลิสต์ "พามาบ่อย" เก็บย้อนหลังได้ 6 คน
-            if (friendsArray.length > 0) {
-                try {
+            try {
+                localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
+                if (friendsArray.length > 0) {
                     let recent = JSON.parse(localStorage.getItem('badminton_recent_friends_' + userUid) || "[]");
                     friendsArray.forEach(f => {
                         recent = recent.filter(rf => rf !== f); // ลบชื่อที่ซ้ำออกก่อน
@@ -717,7 +731,8 @@
                     });
                     recent = recent.slice(0, 6); // เก็บไว้จำสูงสุด 6 คน
                     localStorage.setItem('badminton_recent_friends_' + userUid, JSON.stringify(recent));
-                } catch(e){}
+                }
+            } catch(e) { console.warn("LocalStorage ไม่พร้อมใช้งานข้ามได้เลย:", e); }
             }
         }
 
@@ -957,8 +972,14 @@
 
     async function renderAdminUI(url, bodyObj, isToday) {
         document.getElementById('ad_pax').innerText = "...";
-        document.getElementById('adminAllArea').innerHTML = '<div class="loader" style="margin: 20px auto; width: 25px; height: 25px;"></div>';
-        if (isToday) document.getElementById('adminUnpaidArea').innerHTML = '<div class="loader" style="margin: 20px auto; width: 25px; height: 25px;"></div>';
+        
+        let skeletonHtml = `
+            <div class="skeleton-row"><div class="skeleton skeleton-avatar" style="width:40px; height:40px;"></div><div style="flex: 1;"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-avatar" style="width:40px; height:40px;"></div><div style="flex: 1;"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+            <div class="skeleton-row"><div class="skeleton skeleton-avatar" style="width:40px; height:40px;"></div><div style="flex: 1;"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+        `;
+        document.getElementById('adminAllArea').innerHTML = skeletonHtml;
+        if (isToday) document.getElementById('adminUnpaidArea').innerHTML = skeletonHtml;
         try {
             let res = await fetch(url, { method: 'POST', body: JSON.stringify(bodyObj) });
             let r = await res.json();
@@ -1244,7 +1265,7 @@
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
     function closeManualModal() { 
         document.getElementById('manualModal').style.display = 'none'; 
-        if (userUid) localStorage.setItem('manual_accepted_' + userUid, 'true'); // บันทึกว่าอ่านแล้วจะได้ไม่เด้งซ้ำ
+        try { if (userUid) localStorage.setItem('manual_accepted_' + userUid, 'true'); } catch(e){} // ป้องกันบั๊ก Private Mode
     }
 
     function closeSlipModal() { 
@@ -1275,7 +1296,11 @@
 
     async function openPublicVipModal() {
         document.getElementById('publicVipModal').style.display = 'flex';
-        document.getElementById('publicVipListArea').innerHTML = '<div class="loader"></div>';
+        document.getElementById('publicVipListArea').innerHTML = `
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
+            <div class="skeleton-row"><div style="flex: 1;"><div class="skeleton skeleton-text"></div></div><div class="skeleton skeleton-text short" style="width: 50px; height: 20px; margin:0;"></div></div>
+        `;
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "getPublicVipData" }) });
             let r = await res.json();
