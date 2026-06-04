@@ -148,7 +148,10 @@
             </div>
 
             <div id="personalDashboard" style="display: none; text-align: left; margin-top: 20px; border-top: 2px dashed #e5e7eb; padding-top: 15px;">
-                <h4 style="margin: 0 0 10px 0; color: var(--primary-dark);">📊 สถานะบิลของคุณวันนี้</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; color: var(--primary-dark);">📊 สถานะบิลของคุณวันนี้</h4>
+                    <button onclick="refreshPersonalState()" class="admin-action-btn" style="background: var(--primary-dark); margin: 0; padding: 6px 12px;">🔄 อัปเดต</button>
+                </div>
                 <div id="personalListArea"></div>
                 
                 <div style="background: #fdf2f2; border: 1px solid #fee2e2; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: bold;">
@@ -370,7 +373,7 @@
             let id;
             if (!options.signal) {
                 const controller = new AbortController();
-                id = setTimeout(() => controller.abort(), 15000); // ตัดจบที่ 15 วินาที
+                id = setTimeout(() => controller.abort(), 20000); // 🛡️ ขยายเป็น 20 วิ ให้ครอบคลุม LockService ของฝั่งเซิร์ฟเวอร์
                 options.signal = controller.signal;
             }
             try {
@@ -594,6 +597,7 @@
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('tab' + target.charAt(0).toUpperCase() + target.slice(1) + 'Btn').classList.add('active');
         if(target === 'dashboard') loadDashboardData();
+        if(target === 'checkin' && userUid) refreshPersonalState();
     }
 
     async function executeCheckIn(type) {
@@ -611,7 +615,7 @@
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // จับเวลา 15 วิ ถ้าเซิร์ฟเวอร์ไม่ตอบ ให้เด้งออกเลย
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // จับเวลา 20 วิ
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "checkIn", checkInType: type, uid: userUid, displayName: userDisplayName, friends: friendsArray }), signal: controller.signal });
             clearTimeout(timeoutId);
             let result = await res.json();
@@ -723,7 +727,10 @@
                     result.data.forEach((item, idx) => { 
                         let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
                         let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ทีละ 0.05 วินาที
-                        htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0;"><td>${item.time} น.</td><td style="font-weight:500;">${item.name} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
+                        let isMe = (item.uid === userUid || item.uid === "FRIEND_OF_" + userUid);
+                        let rowStyle = isMe ? "background-color: #eff6ff; color: #1d4ed8;" : "";
+                        let meTag = isMe ? ` <span style="color: #2563eb; font-size: 11px; font-weight: bold;">(คุณ)</span>` : "";
+                        htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0; ${rowStyle}"><td>${item.time} น.</td><td style="font-weight:500;">${item.name}${meTag} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
                     });
                     tbody.innerHTML = htmlStr;
                 }
