@@ -186,76 +186,90 @@
 
     <div id="adminTab" style="display: none;">
         <div class="card" style="border: 2px solid var(--admin);">
-            <h4 style="margin: 0 0 10px 0; color: var(--admin);">📅 ไทม์แมชชีน: ค้นหาประวัติย้อนหลัง</h4>
-            <div style="display: flex; gap: 8px;">
-                <input type="date" id="historyDateInput">
-                <button onclick="fetchHistory()" style="background: var(--admin); color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ค้นหา</button>
+            <div onclick="toggleSection('timeMachineSec', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin: 0; color: var(--admin);">📅 ไทม์แมชชีน: ค้นหาประวัติย้อนหลัง</h4><span class="toggle-icon">🔽</span>
             </div>
-            <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
-            <button id="applyPenaltyBtn" onclick="applyPenalty()" style="display:none; background:#ef4444; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">🚨 ปรับคนค้างจ่าย 100 บ.</button>
+            <div id="timeMachineSec" style="display: none; margin-top: 15px;">
+                <div style="display: flex; gap: 8px;">
+                    <input type="date" id="historyDateInput">
+                    <button onclick="fetchHistory()" style="background: var(--admin); color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ค้นหา</button>
+                </div>
+                <button id="resetTodayBtn" onclick="loadAdminData()" style="display:none; background:#6b7280; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">↩️ กลับมาดูยอดวันนี้</button>
+                <button id="applyPenaltyBtn" onclick="applyPenalty()" style="display:none; background:#ef4444; color:white; border:none; padding:8px; border-radius:8px; width:100%; margin-top:10px; font-weight:bold; cursor:pointer;">🚨 ปรับคนค้างจ่าย 100 บ.</button>
+            </div>
         </div>
 
         <div class="card" style="border: 2px solid #10b981;" id="monthlyReportCard">
-            <h4 style="margin: 0 0 10px 0; color: #059669;">📈 สรุปบัญชีรายเดือน</h4>
-            <div style="display: flex; gap: 8px;">
-                <input type="month" id="reportMonthInput" style="flex:1;">
-                <button onclick="fetchMonthlyReport()" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ดึงยอด</button>
+            <div onclick="toggleSection('monthlyReportSec', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin: 0; color: #059669;">📈 สรุปบัญชีรายเดือน</h4><span class="toggle-icon">🔽</span>
             </div>
-            
-            <div id="reportContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #a7f3d0; padding-top: 15px;">
-                <div style="text-align: center; background: #ecfdf5; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                    <div style="font-size: 14px; color: #047857; font-weight: bold;">💰 รายรับรวมทั้งเดือน</div>
-                    <div style="font-size: 28px; color: #059669; font-weight: bold;" id="rep_total">0</div>
+            <div id="monthlyReportSec" style="display: none; margin-top: 15px;">
+                <div style="display: flex; gap: 8px;">
+                    <input type="month" id="reportMonthInput" style="flex:1;">
+                    <button onclick="fetchMonthlyReport()" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">🔍 ดึงยอด</button>
                 </div>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <div style="flex: 1; background: #f3f4f6; padding: 10px; border-radius: 10px; text-align: center;">
-                        <div style="font-size: 12px; color: #4b5563;">🏸 ค่าสนามรายวัน</div>
-                        <div style="font-size: 18px; color: #374151; font-weight: bold; margin-top: 5px;" id="rep_daily">0</div>
+                
+                <div id="reportContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #a7f3d0; padding-top: 15px;">
+                    <div style="text-align: center; background: #ecfdf5; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                        <div style="font-size: 14px; color: #047857; font-weight: bold;">💰 รายรับรวมทั้งเดือน</div>
+                        <div style="font-size: 28px; color: #059669; font-weight: bold;" id="rep_total">0</div>
                     </div>
-                    <div style="flex: 1; background: #fef08a; padding: 10px; border-radius: 10px; text-align: center;">
-                        <div style="font-size: 12px; color: #a16207;">👑 ค่าสมาชิก (VIP)</div>
-                        <div style="font-size: 18px; color: #854d0e; font-weight: bold; margin-top: 5px;" id="rep_vip">0</div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div style="flex: 1; background: #f3f4f6; padding: 10px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 12px; color: #4b5563;">🏸 ค่าสนามรายวัน</div>
+                            <div style="font-size: 18px; color: #374151; font-weight: bold; margin-top: 5px;" id="rep_daily">0</div>
+                        </div>
+                        <div style="flex: 1; background: #fef08a; padding: 10px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 12px; color: #a16207;">👑 ค่าสมาชิก (VIP)</div>
+                            <div style="font-size: 18px; color: #854d0e; font-weight: bold; margin-top: 5px;" id="rep_vip">0</div>
+                        </div>
                     </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; padding: 0 5px;">
+                        <div>👥 จำนวนคนตี: <b id="rep_pax" style="color:#1f2937;">0</b> ครั้ง</div>
+                        <div>🔴 ยอดค้างชำระ: <b id="rep_unpaid" style="color:#dc2626;">0</b> บาท</div>
+                    </div>
+                    <button onclick="copyMonthlyReport()" class="btn" style="background: #059669; margin-top: 15px;">📋 คัดลอกรายงานสรุป</button>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; padding: 0 5px;">
-                    <div>👥 จำนวนคนตี: <b id="rep_pax" style="color:#1f2937;">0</b> ครั้ง</div>
-                    <div>🔴 ยอดค้างชำระ: <b id="rep_unpaid" style="color:#dc2626;">0</b> บาท</div>
-                </div>
-                <button onclick="copyMonthlyReport()" class="btn" style="background: #059669; margin-top: 15px;">📋 คัดลอกรายงานสรุป</button>
             </div>
         </div>
 
         <div class="card" style="border: 2px solid #fbbf24;" id="vipManageCard">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="margin: 0; color: #d97706;">👑 จัดการสมาชิก VIP</h4>
-                <button onclick="loadVipData(this)" class="admin-action-btn" style="background: #f59e0b; margin: 0; padding: 8px 12px;">🔄 โหลดรายชื่อ</button>
+            <div onclick="toggleSection('vipManageSec', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin: 0; color: #d97706;">👑 จัดการสมาชิก VIP</h4><span class="toggle-icon">🔽</span>
             </div>
-            <div id="vipContentArea" style="display: none; margin-top: 15px; border-top: 1px dashed #fcd34d; padding-top: 10px;">
-                <input type="text" id="vipSearchInput" placeholder="🔍 พิมพ์ค้นหาชื่อสมาชิก..." onkeyup="debounceFilterVipList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box;">
-                <h5 style="margin: 10px 0 5px 0; color: #ef4444;">❌ หมดอายุ (รอต่ออายุ)</h5>
-                <div id="vipExpiredList" style="font-size: 14px; color: #6b7280; max-height: 250px; overflow-y: auto; background: #fef2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px;"></div>
-                <h5 style="margin: 10px 0 5px 0; color: #16a34a;">✅ ต่ออายุแล้ว (เดือนนี้)</h5>
-                <div id="vipActiveList" style="font-size: 14px; color: #6b7280; max-height: 200px; overflow-y: auto; background: #f0fdf4; padding: 10px; border-radius: 8px;"></div>
+            <div id="vipManageSec" style="display: none; margin-top: 15px;">
+                <button onclick="loadVipData(this)" class="btn-secondary" style="background: #fef3c7; color: #d97706; border-color: #fbd38d; margin-top: 0; margin-bottom: 10px;">🔄 โหลดรายชื่อ / อัปเดต</button>
+                <div id="vipContentArea" style="display: none; border-top: 1px dashed #fcd34d; padding-top: 10px;">
+                    <input type="text" id="vipSearchInput" placeholder="🔍 พิมพ์ค้นหาชื่อสมาชิก..." onkeyup="debounceFilterVipList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box;">
+                    <h5 style="margin: 10px 0 5px 0; color: #ef4444;">❌ หมดอายุ (รอต่ออายุ)</h5>
+                    <div id="vipExpiredList" style="font-size: 14px; color: #6b7280; max-height: 250px; overflow-y: auto; background: #fef2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px;"></div>
+                    <h5 style="margin: 10px 0 5px 0; color: #16a34a;">✅ ต่ออายุแล้ว (เดือนนี้)</h5>
+                    <div id="vipActiveList" style="font-size: 14px; color: #6b7280; max-height: 200px; overflow-y: auto; background: #f0fdf4; padding: 10px; border-radius: 8px;"></div>
+                </div>
             </div>
         </div>
 
         <div class="card" style="border: 2px dashed var(--admin);" id="walkInCard">
-            <h4 style="margin: 0 0 10px 0; color: var(--admin);">➕ เพิ่มชื่อคน Walk-in (แอดมินเพิ่มเอง)</h4>
-            <div style="display: flex; gap: 8px; flex-direction: column;">
-                <input type="text" id="walkInNameInput" placeholder="พิมพ์ชื่อนักกีฬา" maxlength="20">
-                <div style="display: flex; gap: 8px;">
-                    <select id="walkInTierSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
-                        <option value="NORMAL">รายวัน (20 บ.)</option>
-                        <option value="STUDENT">นักศึกษา (ฟรี)</option>
-                        <option value="VIP">รายเดือน (ฟรี)</option>
-                        <option value="YEARLY">รายปี (ฟรี)</option>
-                    </select>
-                    <select id="walkInStatusSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
-                        <option value="UNPAID">❌ ยังไม่จ่าย</option>
-                        <option value="PAID">✅ จ่ายแล้ว (จ่ายสด)</option>
-                    </select>
+            <div onclick="toggleSection('walkInSec', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin: 0; color: var(--admin);">➕ เพิ่มชื่อคน Walk-in (แอดมินเพิ่ม)</h4><span class="toggle-icon">🔽</span>
+            </div>
+            <div id="walkInSec" style="display: none; margin-top: 15px;">
+                <div style="display: flex; gap: 8px; flex-direction: column;">
+                    <input type="text" id="walkInNameInput" placeholder="พิมพ์ชื่อนักกีฬา" maxlength="20">
+                    <div style="display: flex; gap: 8px;">
+                        <select id="walkInTierSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
+                            <option value="NORMAL">รายวัน (20 บ.)</option>
+                            <option value="STUDENT">นักศึกษา (ฟรี)</option>
+                            <option value="VIP">รายเดือน (ฟรี)</option>
+                            <option value="YEARLY">รายปี (ฟรี)</option>
+                        </select>
+                        <select id="walkInStatusSelect" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:14px;">
+                            <option value="UNPAID">❌ ยังไม่จ่าย</option>
+                            <option value="PAID">✅ จ่ายแล้ว (จ่ายสด)</option>
+                        </select>
+                    </div>
+                    <button onclick="submitWalkIn(this)" class="btn" style="background: var(--admin); margin-top: 5px;">🟢 เพิ่มชื่อเข้ากระดาน</button>
                 </div>
-                <button onclick="submitWalkIn(this)" class="btn" style="background: var(--admin); margin-top: 5px;">🟢 เพิ่มชื่อเข้ากระดาน</button>
             </div>
         </div>
 
@@ -366,6 +380,18 @@
 </div>
 
 <script>
+    function toggleSection(secId, el) {
+        let sec = document.getElementById(secId);
+        let icon = el.querySelector('.toggle-icon');
+        if (sec.style.display === 'none') {
+            sec.style.display = 'block';
+            if (icon) icon.innerText = '🔼';
+        } else {
+            sec.style.display = 'none';
+            if (icon) icon.innerText = '🔽';
+        }
+    }
+
     // 🚨 Global Fetch Interceptor (เกราะป้องกันแอปหมุนค้างตลอดกาลในทุกๆ จุด)
     const originalFetch = window.fetch;
     window.fetch = async function(url, options) {
