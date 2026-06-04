@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🏸 ระบบจัดการชมรมแบดมินตันตากฟ้า</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==========================================
     📝 DEV NOTES & POST-MORTEM (ฝั่งหน้าบ้าน):
@@ -227,6 +228,9 @@
                             <div style="font-size: 12px; color: #a16207;">👑 ค่าสมาชิก (VIP)</div>
                             <div style="font-size: 18px; color: #854d0e; font-weight: bold; margin-top: 5px;" id="rep_vip">0</div>
                         </div>
+                    </div>
+                    <div id="chartContainerBox" style="background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: none;">
+                        <canvas id="monthlyChart" style="max-height: 200px; width: 100%;"></canvas>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; padding: 0 5px;">
                         <div>👥 จำนวนคนตี: <b id="rep_pax" style="color:#1f2937;">0</b> ครั้ง</div>
@@ -458,6 +462,7 @@
     let lastDashFetchTime = 0; let currentViewDate = ""; let globalUnpaidList = [];
     let globalVipList = [];
     let currentModalActiveRow = null; let personalDebtTracker = 0;
+    let monthlyChartInstance = null;
 
     function getApiUrl() { return GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime(); }
 
@@ -476,11 +481,21 @@
             await Promise.race([liffInit, initTimeout]);
             
             if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                userUid = profile.userId; 
-                userDisplayName = profile.displayName || "User_" + userUid.substring(0,5); 
-                document.getElementById('userImg').src = profile.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-                document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
+                // 🚀 ปรับจูนความเร็ว: ดึงชื่อ/รูปจาก Local Token ในเครื่องทันที (ไม่ต้องรอโหลดจากเซิร์ฟเวอร์ LINE)
+                const token = liff.getDecodedIDToken();
+                if (token && token.sub) {
+                    userUid = token.sub;
+                    userDisplayName = token.name || "User_" + userUid.substring(0,5);
+                    document.getElementById('userImg').src = token.picture || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                    document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
+                } else {
+                    // Fallback เผื่อกรณี Token มีปัญหา
+                    const profile = await liff.getProfile();
+                    userUid = profile.userId; 
+                    userDisplayName = profile.displayName || "User_" + userUid.substring(0,5); 
+                    document.getElementById('userImg').src = profile.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                    document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
+                }
                 
                 let syncSuccess = await refreshPersonalState();
                 if (!syncSuccess) return; // 🛡️ หยุดทำงานทันทีถ้าระบบดึงข้อมูลพัง (ป้องกันจอแหว่งก่อนรีโหลด)
@@ -884,6 +899,32 @@
                 document.getElementById('rep_vip').innerText = r.stats.vip.toLocaleString();
                 document.getElementById('rep_pax').innerText = r.stats.pax.toLocaleString();
                 document.getElementById('rep_unpaid').innerText = r.stats.unpaid.toLocaleString();
+                
+                // 🛡️ ป้องกันกราฟบั๊ก กรณีไม่มีเน็ตโหลด Chart.js หรือยอดเงินเป็น 0
+                let chartBox = document.getElementById('chartContainerBox');
+                if (r.stats.total > 0 && typeof Chart !== 'undefined') {
+                    chartBox.style.display = 'block';
+                    if (monthlyChartInstance) { monthlyChartInstance.destroy(); } // ลบกราฟเก่าทิ้งก่อนวาดใหม่
+                    const ctx = document.getElementById('monthlyChart').getContext('2d');
+                    monthlyChartInstance = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['ค่าสนามรายวัน', 'ค่าสมาชิก VIP'],
+                            datasets: [{
+                                data: [r.stats.daily, r.stats.vip],
+                                backgroundColor: ['#3b82f6', '#f59e0b'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { font: { family: '-apple-system, sans-serif' } } },
+                            tooltip: { callbacks: { label: function(context) { return ' ' + context.label + ': ' + context.raw.toLocaleString() + ' บาท'; } } } }
+                        }
+                    });
+                } else {
+                    chartBox.style.display = 'none'; // ซ่อนกราฟถ้ายอดเป็น 0 หรือไลบรารีไม่ทำงาน
+                }
             } else { showToast(r.message, "error"); }
         } catch (e) {
             console.error("[REP_01] Fetch Report Error:", e);
