@@ -113,7 +113,9 @@
             
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
-                <input type="file" id="slipFileInput" accept="image/jpeg, image/png, image/webp" style="margin-top: 5px; background: white;">
+                <input type="file" id="slipFileInput" accept="image/jpeg, image/png, image/webp" style="margin-top: 5px; background: white;" onchange="previewSlip(event)">
+                <!-- เพิ่มกรอบแสดงพรีวิวสลิป -->
+                <img id="slipPreviewImg" style="display: none; width: 100%; max-height: 250px; object-fit: contain; margin-top: 10px; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb; padding: 5px; box-sizing: border-box;">
                 
                 <label style="font-size: 13px; font-weight: bold; color: #374151; display:block; margin-top:10px;">✍️ หมายเหตุ (ถ้ามี):</label>
                 <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
@@ -294,6 +296,8 @@
 
         <div class="card">
             <h4 style="margin: 0 0 10px 0;" id="adminListTitle">👥 จัดการนักกีฬาทั้งหมด</h4>
+            <!-- เพิ่มช่องค้นหาสำหรับแอดมิน -->
+            <input type="text" id="adminSearchInput" placeholder="🔍 พิมพ์ค้นหารายชื่อนักกีฬา หรือสถานะ..." onkeyup="filterAdminList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 15px; box-sizing: border-box; font-size: 14px;">
             <div id="adminAllArea" style="font-size: 14px; color: #6b7280;"></div>
         </div>
     </div>
@@ -414,6 +418,19 @@
         }
         return originalFetch(url, options);
     };
+
+    // 🌟 เพิ่มฟังก์ชัน Preview รูปสลิป
+    function previewSlip(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('slipPreviewImg');
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+        } else {
+            preview.src = "";
+            preview.style.display = 'none';
+        }
+    }
 
     // 🚨 Global Error Listener (ดักจับ JS แตกนอกเหนือจาก try-catch)
     window.addEventListener('error', function(e) {
@@ -724,6 +741,8 @@
             
             if (result.status === "success") { 
                 document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
+                // ซ่อน Preview เมื่อส่งสำเร็จ
+                document.getElementById('slipPreviewImg').style.display = 'none';
                 await refreshPersonalState();
                 showToast("✅ อัปโหลดสลิปสำเร็จ");
             } else { throw new Error(result.message); }
@@ -777,6 +796,7 @@
         document.getElementById('applyPenaltyBtn').style.display = "none";
         let today = new Date();
         document.getElementById('reportMonthInput').value = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('adminSearchInput').value = ""; // เคลียร์ช่องค้นหา
         document.getElementById('reportContentArea').style.display = "none";
         document.getElementById('vipContentArea').style.display = "none"; document.getElementById('vipSearchInput').value = "";
         document.getElementById('adminPanelTitle').innerText = "📊 สรุปยอด 12 ชม.ล่าสุด"; document.getElementById('adminListTitle').innerText = "👥 จัดการนักกีฬาทั้งหมด";
@@ -927,7 +947,8 @@
                         if (a.slipUrl && a.slipUrl !== "-") revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'revertToPending', this)">↩️ ดึงกลับรอตรวจ</button> <button class="admin-action-btn" style="background:#ef4444;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectSlip', this)">❌ ปฏิเสธสลิป</button>`;
                         else revertBtn = `<button class="admin-action-btn" style="background:#ea580c;" onclick="adminAction('${a.time}', '${a.uid}', 'rejectPaySingle', this)">↩️ ดึงกลับค้างจ่าย</button>`;
                     }
-                    allHTML += `<div style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
+                    // เพิ่มคลาส admin-all-item สำหรับใช้กับระบบค้นหา
+                    allHTML += `<div class="admin-all-item" style="padding:10px; border-bottom:1px solid #e5e7eb;"><div><b>${a.name}</b> ${noteTxtAll} <span style="font-size:12px;">(${a.time} น.)</span></div><div style="font-size:12px; color: #6b7280; margin-bottom: 5px;">สถานะ: ${a.status} (${a.cost} บ.)</div>${(isToday || allowEditHistory) ? `<button class="admin-action-btn" style="background:#9ca3af;" onclick="adminAction('${a.time}', '${a.uid}', 'delete', this)">🗑️ ลบ</button>` : ''} ${slipBtnAll} ${promoteBtn} ${historyPayBtn} ${revertBtn}</div>`;
                 });
             document.getElementById('adminAllArea').innerHTML = allHTML ? `<div class="fade-in">${allHTML}</div>` : "ยังไม่มีข้อมูล";
             }
@@ -937,6 +958,16 @@
             document.getElementById('adminAllArea').innerHTML = '<div style="color:#ef4444; padding:10px; text-align:center;">โหลดข้อมูลไม่สำเร็จ (รหัสอ้างอิง: [ADM_01])</div>';
             if (isToday) document.getElementById('adminUnpaidArea').innerHTML = '<div style="color:#ef4444; padding:10px; text-align:center;">โหลดข้อมูลไม่สำเร็จ</div>';
         }
+    }
+
+    // 🌟 ฟังก์ชันค้นหารายชื่อในหน้าแอดมิน
+    function filterAdminList() {
+        let filter = document.getElementById('adminSearchInput').value.toLowerCase();
+        let items = document.querySelectorAll('.admin-all-item');
+        items.forEach(item => {
+            let text = item.innerText.toLowerCase();
+            item.style.display = text.includes(filter) ? "" : "none";
+        });
     }
 
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
