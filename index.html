@@ -141,6 +141,8 @@
             
             <div id="mainForm" style="text-align: left; margin-top: 20px;">
                 <div style="font-size: 14px; font-weight: bold;">👥 เพิ่มชื่อเพื่อนที่พ่วงมาด้วย:</div>
+                <!-- เพิ่มส่วน Quick Add (จำชื่อเพื่อน) -->
+                <div id="recentFriendsArea" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; margin-bottom:10px;"></div>
                 <div id="friendsListArea"></div>
                 <button class="btn-secondary" id="addFriendBtn" onclick="addFriendInput('')">➕ พาเพื่อนมาด้วย</button>
                 
@@ -297,7 +299,15 @@
         <div class="card">
             <h4 style="margin: 0 0 10px 0;" id="adminListTitle">👥 จัดการนักกีฬาทั้งหมด</h4>
             <!-- เพิ่มช่องค้นหาสำหรับแอดมิน -->
-            <input type="text" id="adminSearchInput" placeholder="🔍 พิมพ์ค้นหารายชื่อนักกีฬา หรือสถานะ..." onkeyup="filterAdminList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 15px; box-sizing: border-box; font-size: 14px;">
+            <input type="text" id="adminSearchInput" placeholder="🔍 พิมพ์ค้นหารายชื่อนักกีฬา หรือสถานะ..." onkeyup="filterAdminList()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin-bottom: 10px; box-sizing: border-box; font-size: 14px;">
+            <!-- 🌟 เพิ่มปุ่ม Quick Filters กรองสถานะด่วน -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
+                <button class="btn-secondary" style="margin-top:0; width:auto; padding:5px 12px; font-size:12px; border-radius:20px; background:#f3f4f6;" onclick="setAdminFilter('')">ทั้งหมด</button>
+                <button class="btn-secondary" style="margin-top:0; width:auto; padding:5px 12px; font-size:12px; border-radius:20px; background:#fef2f2; color:#dc2626; border-color:#fecaca;" onclick="setAdminFilter('ยังไม่จ่าย')">🔴 ค้างจ่าย</button>
+                <button class="btn-secondary" style="margin-top:0; width:auto; padding:5px 12px; font-size:12px; border-radius:20px; background:#fefce8; color:#ca8a04; border-color:#fef08a;" onclick="setAdminFilter('รอแอดมินตรวจ')">⏳ รอตรวจ</button>
+                <button class="btn-secondary" style="margin-top:0; width:auto; padding:5px 12px; font-size:12px; border-radius:20px; background:#f0fdf4; color:#16a34a; border-color:#bbf7d0;" onclick="setAdminFilter('จ่ายแล้ว')">✅ จ่ายแล้ว</button>
+                <button class="btn-secondary" style="margin-top:0; width:auto; padding:5px 12px; font-size:12px; border-radius:20px; background:#eff6ff; color:#2563eb; border-color:#bfdbfe;" onclick="setAdminFilter('ฟรี')">🎓 ฟรี / เหมา</button>
+            </div>
             <div id="adminAllArea" style="font-size: 14px; color: #6b7280;"></div>
         </div>
     </div>
@@ -509,6 +519,7 @@
                 document.getElementById('paymentSec').style.display = 'none';
                 document.getElementById('mainForm').style.display = 'block';
                 document.getElementById('friendsListArea').innerHTML = '';
+                renderRecentFriends(); // 🌟 โหลดรายชื่อเพื่อนที่พามาบ่อย
                 try {
                     let savedFriends = localStorage.getItem('badminton_friends_' + userUid);
                     if (savedFriends) { JSON.parse(savedFriends).filter(f => f.trim() !== '').forEach(f => addFriendInput(f)); }
@@ -522,6 +533,26 @@
             setTimeout(()=>location.reload(), 2000); 
             return false;
         }
+    }
+
+    // 🌟 ฟังก์ชันโหลดปุ่มจำชื่อเพื่อนที่เพิ่งมาด้วยกัน
+    function renderRecentFriends() {
+        let recentArea = document.getElementById('recentFriendsArea');
+        try {
+            let saved = localStorage.getItem('badminton_recent_friends_' + userUid);
+            if (saved) {
+                let friends = JSON.parse(saved);
+                if (friends.length > 0) {
+                    let html = `<span style="font-size: 12px; color: #6b7280; width: 100%;">เพื่อนที่พามาบ่อย:</span>`;
+                    friends.forEach(f => {
+                        html += `<button type="button" class="btn-secondary" style="margin-top: 0; padding: 4px 10px; width: auto; font-size: 12px; border-radius: 20px; background: #e0f2fe; color: #1d4ed8; border: 1px solid #bfdbfe;" onclick="addFriendInput('${f}')">+ ${f}</button>`;
+                    });
+                    recentArea.innerHTML = html;
+                    return;
+                }
+            }
+        } catch(e) {}
+        recentArea.innerHTML = "";
     }
 
     function addFriendInput(valueStr) {
@@ -655,7 +686,21 @@
         let selector = (type === 'MAIN') ? '.friend-name-input' : '.late-friend-name-input';
         
         document.querySelectorAll(selector).forEach(i => { if (i.value.trim() !== "") friendsArray.push(i.value.trim()); });
-        if (type === 'MAIN') localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
+        if (type === 'MAIN') {
+            localStorage.setItem('badminton_friends_' + userUid, JSON.stringify(friendsArray));
+            // 🌟 บันทึกชื่อเพื่อนเข้าลิสต์ "พามาบ่อย" เก็บย้อนหลังได้ 6 คน
+            if (friendsArray.length > 0) {
+                try {
+                    let recent = JSON.parse(localStorage.getItem('badminton_recent_friends_' + userUid) || "[]");
+                    friendsArray.forEach(f => {
+                        recent = recent.filter(rf => rf !== f); // ลบชื่อที่ซ้ำออกก่อน
+                        recent.unshift(f); // ดันชื่อล่าสุดไปไว้หน้าสุด
+                    });
+                    recent = recent.slice(0, 6); // เก็บไว้จำสูงสุด 6 คน
+                    localStorage.setItem('badminton_recent_friends_' + userUid, JSON.stringify(recent));
+                } catch(e){}
+            }
+        }
 
         try {
             const controller = new AbortController();
@@ -968,6 +1013,12 @@
             let text = item.innerText.toLowerCase();
             item.style.display = text.includes(filter) ? "" : "none";
         });
+    }
+
+    // 🌟 ฟังก์ชันรับค่าจากปุ่ม Quick Filters
+    function setAdminFilter(keyword) {
+        document.getElementById('adminSearchInput').value = keyword;
+        filterAdminList();
     }
 
     async function adminAction(targetTime, targetUid, manageType, btnElement) {
