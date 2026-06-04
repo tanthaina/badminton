@@ -114,7 +114,7 @@
             
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
-                <input type="file" id="slipFileInput" accept="image/jpeg, image/png, image/webp" style="margin-top: 5px; background: white;" onchange="previewSlip(event)">
+                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onclick="this.value=null;" onchange="previewSlip(event)">
                 <!-- เพิ่มกรอบแสดงพรีวิวสลิป -->
                 <img id="slipPreviewImg" style="display: none; width: 100%; max-height: 250px; object-fit: contain; margin-top: 10px; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb; padding: 5px; box-sizing: border-box;">
                 
@@ -436,15 +436,18 @@
 
     // 🌟 เพิ่มฟังก์ชัน Preview รูปสลิป
     function previewSlip(event) {
-        const file = event.target.files[0];
-        const preview = document.getElementById('slipPreviewImg');
-        if (file) {
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = 'block';
-        } else {
-            preview.src = "";
-            preview.style.display = 'none';
-        }
+        try {
+            const file = event.target.files[0];
+            const preview = document.getElementById('slipPreviewImg');
+            if (file) {
+                if (preview.src) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            } else {
+                preview.src = "";
+                preview.style.display = 'none';
+            }
+        } catch(e) { console.error("Preview Error:", e); }
     }
 
     // 🚨 Global Error Listener (ดักจับ JS แตกนอกเหนือจาก try-catch)
@@ -1217,8 +1220,16 @@
             
             if (status.includes("⏳") || status.includes("❌")) {
                 document.getElementById('modalAdminActionArea').style.display = 'block';
+                document.getElementById('modalApproveBtn').style.display = 'block';
                 document.getElementById('modalApproveBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'confirmPay', this); };
                 document.getElementById('modalApproveBtn').disabled = false;
+                document.getElementById('modalRejectBtn').innerText = "❌ ปฏิเสธสลิป";
+                document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
+                document.getElementById('modalRejectBtn').disabled = false;
+            } else if (status.includes("✅") && !status.includes("ฟรี") && !status.includes("เหมาจ่าย") && !status.includes("ระบบ")) {
+                document.getElementById('modalAdminActionArea').style.display = 'block';
+                document.getElementById('modalApproveBtn').style.display = 'none'; // ซ่อนปุ่มอนุมัติ (เพราะรับเงินไปแล้ว)
+                document.getElementById('modalRejectBtn').innerText = "❌ ปฏิเสธสลิป (ดึงยอดกลับ)";
                 document.getElementById('modalRejectBtn').onclick = function() { adminAction(currentModalActiveRow.time, currentModalActiveRow.uid, 'rejectSlip', this); };
                 document.getElementById('modalRejectBtn').disabled = false;
             } else { document.getElementById('modalAdminActionArea').style.display = 'none'; }
