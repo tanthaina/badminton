@@ -152,7 +152,15 @@
             <button class="btn-secondary" onclick="openManualModal()" style="margin-top: 10px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 13px;">📖 อ่านคู่มือและเงื่อนไขการใช้งาน</button>
             <button class="btn-secondary" onclick="openQrModal()" style="margin-top: 8px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 13px;">📱 แสดง QR Code ให้คนนอกสแกนลงชื่อ</button>
             
-            <div id="mainForm" style="text-align: left; margin-top: 20px;">
+            <!-- 🌟 Skeleton โหลดข้อมูลฟอร์มแบบ Progressive -->
+            <div id="formLoadingSec" style="display: none; text-align: left; margin-top: 20px;">
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text short"></div>
+                <div class="skeleton skeleton-block" style="margin-top: 15px; height: 50px;"></div>
+                <div class="skeleton skeleton-block" style="margin-top: 10px; height: 50px;"></div>
+            </div>
+
+            <div id="mainForm" style="display: none; text-align: left; margin-top: 20px;">
                 <div style="font-size: 14px; font-weight: bold;">👥 เพิ่มชื่อเพื่อนที่พ่วงมาด้วย:</div>
                 <!-- เพิ่มส่วน Quick Add (จำชื่อเพื่อน) -->
                 <div id="recentFriendsArea" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; margin-bottom:10px;"></div>
@@ -198,6 +206,7 @@
                 <tbody id="dashboardTableBody"></tbody>
             </table>
             <div id="emptyDashTxt" style="padding: 20px; text-align: center; color: #9ca3af; display: none;">ยังไม่มีสมาชิกเข้าสนาม</div>
+            <button id="loadMoreDashBtn" class="btn-secondary" style="display: none; margin-top: 15px; width: 100%; background: #ffffff; border: 1px solid #d1d5db;" onclick="loadMoreDashData()">👇 โหลดรายชื่อเพิ่มเติม...</button>
         </div>
     </div>
 
@@ -479,6 +488,7 @@
     let myTierType = "NORMAL"; let baseCost = 20; let isAdminGlobal = false;
     let lastDashFetchTime = 0; let currentViewDate = ""; let globalUnpaidList = [];
     let globalVipList = [];
+    let globalDashData = []; let currentDashPage = 1; const DASH_ITEMS_PER_PAGE = 20; // 🌟 ตัวแปรสำหรับ Pagination
     let currentModalActiveRow = null; let personalDebtTracker = 0;
     let monthlyChartInstance = null;
 
@@ -515,11 +525,25 @@
                     document.getElementById('userName').innerText = "สวัสดี " + userDisplayName;
                 }
                 
-                let syncSuccess = await refreshPersonalState();
-                if (!syncSuccess) return; // 🛡️ หยุดทำงานทันทีถ้าระบบดึงข้อมูลพัง (ป้องกันจอแหว่งก่อนรีโหลด)
-                
+                // 🌟 โหลด Cache ข้อมูลสิทธิ์และแอดมินมาแสดงทันที (ทำให้เว็บดูโหลดเสร็จไวขึ้น 300%)
+                try {
+                    let cTier = localStorage.getItem('c_tier_' + userUid);
+                    let cTierName = localStorage.getItem('c_tier_name_' + userUid);
+                    if (cTier && cTier !== "NORMAL") {
+                        let badge = document.getElementById('tierBadge');
+                        badge.innerText = (cTier === "STUDENT") ? "🎓 " + cTierName : "⭐ " + cTierName;
+                        badge.className = (cTier === "STUDENT") ? "badge badge-student" : "badge badge-vip";
+                        badge.style.display = 'inline-block';
+                    }
+                    if (localStorage.getItem('c_admin_' + userUid) === 'true') { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
+                } catch(e) {}
+
+                // 🌟 ปิดหน้าโหลดรวม แล้วเปิดหน้าแรกให้เห็นรูปโปรไฟล์ทันที (ไม่ต้องรอหลังบ้าน)
                 document.getElementById('loadingSec').style.display = 'none';
                 document.getElementById('checkinTab').style.display = 'block';
+
+                let syncSuccess = await refreshPersonalState();
+                if (!syncSuccess) return; // 🛡️ หยุดทำงานทันทีถ้าระบบดึงข้อมูลพัง (ป้องกันจอแหว่งก่อนรีโหลด)
                 
                 // เด้งคู่มืออัตโนมัติหากยังไม่เคยกดรับทราบเงื่อนไข
                 try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
@@ -534,17 +558,36 @@
 
     async function refreshPersonalState() {
         try {
+            // โชว์ Skeleton พื้นที่แบบฟอร์มด้านล่าง
+            document.getElementById('mainForm').style.display = 'none';
+            document.getElementById('personalDashboard').style.display = 'none';
+            document.getElementById('paymentSec').style.display = 'none';
+            document.getElementById('formLoadingSec').style.display = 'block';
+
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "init", uid: userUid }) });
             let result = await res.json();
             
+            document.getElementById('formLoadingSec').style.display = 'none'; // ซ่อน Skeleton เมื่อข้อมูลมา
+
+            // 🌟 อัปเดต Cache สิทธิ์การใช้งาน
+            try {
+                localStorage.setItem('c_tier_' + userUid, result.tierType);
+                localStorage.setItem('c_tier_name_' + userUid, result.tierName);
+                localStorage.setItem('c_admin_' + userUid, result.isAdmin ? 'true' : 'false');
+            } catch(e) {}
+
             myTierType = result.tierType;
             if (myTierType !== "NORMAL") {
                 let badge = document.getElementById('tierBadge');
                 badge.innerText = (myTierType === "STUDENT") ? "🎓 " + result.tierName : "⭐ " + result.tierName;
                 badge.className = (myTierType === "STUDENT") ? "badge badge-student" : "badge badge-vip";
                 badge.style.display = 'inline-block';
+            } else {
+                document.getElementById('tierBadge').style.display = 'none';
             }
+            
             if (result.isAdmin) { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
+            else { isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; }
 
             if (result.checkedIn) { renderPersonalDashboard(result); } 
             else {
@@ -843,26 +886,51 @@
             let result = await res.json();
             if (result.status === "success") {
                 lastDashFetchTime = Date.now();
+                globalDashData = result.data; // เก็บข้อมูลทั้งหมดไว้ในตัวแปร
+                currentDashPage = 1; // รีเซ็ตหน้าที่กำลังดู
                 const tbody = document.getElementById('dashboardTableBody'); tbody.innerHTML = ""; 
-                if (result.data.length === 0) document.getElementById('emptyDashTxt').style.display = 'block';
+                if (globalDashData.length === 0) {
+                    document.getElementById('emptyDashTxt').style.display = 'block';
+                    document.getElementById('loadMoreDashBtn').style.display = 'none';
+                }
                 else {
                     document.getElementById('emptyDashTxt').style.display = 'none';
-                    let htmlStr = "";
-                    result.data.forEach((item, idx) => { 
-                        let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
-                        let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ทีละ 0.05 วินาที
-                        let isMe = (item.uid === userUid || item.uid === "FRIEND_OF_" + userUid);
-                        let rowStyle = isMe ? "background-color: #eff6ff; color: #1d4ed8;" : "";
-                        let meTag = isMe ? ` <span style="color: #2563eb; font-size: 11px; font-weight: bold;">(คุณ)</span>` : "";
-                        htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0; ${rowStyle}"><td>${item.time} น.</td><td style="font-weight:500;">${item.name}${meTag} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
-                    });
-                    tbody.innerHTML = htmlStr;
+                    renderDashPage(); // เรียกใช้ฟังก์ชันทยอยแสดงผล
                 }
             }
         } catch (e) { 
             console.error("[DASH_01] Load Dashboard Error:", e);
             showToast("⚠️ โหลดรายชื่อไม่สำเร็จ ลองกดอัปเดตอีกครั้ง [DASH_01]", "error");
         } finally { btn.disabled = false; btn.innerText = "🔄 อัปเดต"; }
+    }
+
+    // 🌟 ฟังก์ชันทยอยแสดงผลรายชื่อ (Client-side Pagination)
+    function renderDashPage() {
+        const tbody = document.getElementById('dashboardTableBody');
+        const startIndex = (currentDashPage - 1) * DASH_ITEMS_PER_PAGE;
+        const endIndex = startIndex + DASH_ITEMS_PER_PAGE;
+        const sliceData = globalDashData.slice(startIndex, endIndex);
+        
+        let htmlStr = "";
+        sliceData.forEach((item, idx) => { 
+            let statusIcon = item.status.includes("✅") ? "✅" : (item.status.includes("เหมาจ่าย") ? "⭐" : (item.status.includes("ฟรี") ? "🎓" : (item.status.includes("⏳") ? "⏳" : "❌")));
+            let delay = Math.min(idx * 0.05, 0.5); // ตั้งเวลาดีเลย์ให้แอนิเมชันไล่ระดับ
+            let isMe = (item.uid === userUid || item.uid === "FRIEND_OF_" + userUid);
+            let rowStyle = isMe ? "background-color: #eff6ff; color: #1d4ed8;" : "";
+            let meTag = isMe ? ` <span style="color: #2563eb; font-size: 11px; font-weight: bold;">(คุณ)</span>` : "";
+            htmlStr += `<tr class="fade-in" style="animation-delay: ${delay}s; opacity: 0; ${rowStyle}"><td>${item.time} น.</td><td style="font-weight:500;">${item.name}${meTag} <span class="icon-badge">${statusIcon}</span></td></tr>`; 
+        });
+        
+        tbody.insertAdjacentHTML('beforeend', htmlStr); // แทรกโค้ดต่อท้ายตารางเดิมเพื่อรักษาแอนิเมชัน
+        
+        // เช็คว่าข้อมูลหมดหรือยัง ถ้าหมดแล้วซ่อนปุ่ม
+        document.getElementById('loadMoreDashBtn').style.display = (endIndex >= globalDashData.length) ? 'none' : 'block';
+    }
+
+    // 🌟 ฟังก์ชันเมื่อผู้ใช้กดปุ่มโหลดเพิ่ม
+    function loadMoreDashData() {
+        currentDashPage++;
+        renderDashPage();
     }
 
     function copyAcc() { navigator.clipboard.writeText("020219081907").then(() => showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success")).catch(e => showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ กรุณาคัดลอกด้วยตนเอง", "error")); }
