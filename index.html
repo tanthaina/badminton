@@ -765,6 +765,10 @@
         btn.disabled = true; btn.innerText = "⏳ กำลังบันทึกเข้ากระดาน...";
         document.querySelectorAll('.tab-btn').forEach(t => t.disabled = true);
 
+        // 🛡️ ป้องกัน User พิมพ์ชื่อเพิ่ม หรือกดลบระหว่างที่ระบบกำลังโหลดส่งข้อมูล
+        document.querySelectorAll('.friend-name-input, .late-friend-name-input').forEach(i => i.disabled = true);
+        document.querySelectorAll('.remove-btn, #addFriendBtn, #addLateFriendBtn').forEach(b => b.style.pointerEvents = 'none');
+
         let friendsArray = [];
         let selector = (type === 'MAIN') ? '.friend-name-input' : '.late-friend-name-input';
         
@@ -794,12 +798,17 @@
             
             if (result.status === "error") { 
                 showToast(result.message, "error"); btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
-                document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); return; 
+                document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); 
+                document.querySelectorAll('.friend-name-input, .late-friend-name-input').forEach(i => i.disabled = false);
+                document.querySelectorAll('.remove-btn, #addFriendBtn, #addLateFriendBtn').forEach(b => b.style.pointerEvents = 'auto');
+                return; 
             }
 
             document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false);
             btn.disabled = false; // 🌟 ปลดล็อกปุ่ม
             btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อนที่มาทีหลัง"; // 🌟 รีเซ็ตข้อความ
+            document.querySelectorAll('.friend-name-input, .late-friend-name-input').forEach(i => i.disabled = false);
+            document.querySelectorAll('.remove-btn, #addFriendBtn, #addLateFriendBtn').forEach(b => b.style.pointerEvents = 'auto');
             if (type === 'LATE') { 
                 document.getElementById('lateFriendsArea').innerHTML = ""; 
                 document.getElementById('submitLateBtn').style.display = "none";
@@ -810,6 +819,8 @@
             showToast("⚠️ การเชื่อมต่อขัดข้อง กรุณาเช็คเน็ตแล้วกดอีกครั้ง [CHK_01]", "error"); 
             btn.disabled = false; btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อน"; 
             document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false); 
+            document.querySelectorAll('.friend-name-input, .late-friend-name-input').forEach(i => i.disabled = false);
+            document.querySelectorAll('.remove-btn, #addFriendBtn, #addLateFriendBtn').forEach(b => b.style.pointerEvents = 'auto');
         }
     }
 
@@ -1174,15 +1185,23 @@
         if (manageType === 'revertToPending' && !confirm("⚠️ ดึงรายการนี้กลับไปเป็น 'รอแอดมินตรวจ' ใช่หรือไม่?")) return;
         if (manageType === 'rejectPaySingle' && !confirm("⚠️ ยืนยันดึงกลับไปเป็น 'ยังไม่จ่าย' ใช่หรือไม่?")) return;
         btnElement.disabled = true; btnElement.innerText = "⏳...";
+        
+        // 🛡️ บล็อกปุ่มแอดมินทั้งหมดชั่วคราว ป้องกันการกดรัวๆ จนคิว GAS เต็ม
+        document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'none');
+
         try {
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "adminManage", uid: userUid, targetTime: targetTime, targetUid: targetUid, manageType: manageType, targetDate: currentViewDate }) });
             let r = await res.json();
             if (r.status === "success") { btnElement.innerText = "✅ สำเร็จ"; closeSlipModal(); setTimeout(currentViewDate ? fetchHistory : loadAdminData, 500); } 
-            else { showToast(r.message, "error"); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; }
+            else { 
+                showToast(r.message, "error"); btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด"; 
+                document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'auto');
+            }
         } catch (e) { 
             console.error("[ACT_01] Admin Action Error:", e);
             showToast("⚠️ เชื่อมต่อล้มเหลว กรุณาลองใหม่ [ACT_01]", "error"); 
             btnElement.disabled = false; btnElement.innerText = "❌ ผิดพลาด";
+            document.querySelectorAll('.admin-action-btn').forEach(b => b.style.pointerEvents = 'auto');
         }
     }
 
