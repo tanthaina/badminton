@@ -542,11 +542,11 @@
                 document.getElementById('loadingSec').style.display = 'none';
                 document.getElementById('checkinTab').style.display = 'block';
 
+                // 🌟 ย้ายการเช็คคู่มือมาไว้ตรงนี้ ให้เด้งทันทีไม่ต้องรอเซิร์ฟเวอร์ (User Experience ดีขึ้น)
+                try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
+
                 let syncSuccess = await refreshPersonalState();
                 if (!syncSuccess) return; // 🛡️ หยุดทำงานทันทีถ้าระบบดึงข้อมูลพัง (ป้องกันจอแหว่งก่อนรีโหลด)
-                
-                // เด้งคู่มืออัตโนมัติหากยังไม่เคยกดรับทราบเงื่อนไข
-                try { if (!localStorage.getItem('manual_accepted_' + userUid)) { openManualModal(); } } catch(e) { openManualModal(); }
             } else liff.login();
         } catch (err) { 
             console.error("[INIT_01] LIFF/System Init Error:", err);
@@ -567,6 +567,8 @@
             let res = await fetch(getApiUrl(), { method: 'POST', body: JSON.stringify({ action: "init", uid: userUid }) });
             let result = await res.json();
             
+            if (result.status === "error") throw new Error(result.message); // 🛡️ ดักจับกรณีคิวเซิร์ฟเวอร์เต็ม หรือ error จากหลังบ้าน
+
             document.getElementById('formLoadingSec').style.display = 'none'; // ซ่อน Skeleton เมื่อข้อมูลมา
 
             // 🌟 อัปเดต Cache สิทธิ์การใช้งาน
@@ -586,8 +588,13 @@
                 document.getElementById('tierBadge').style.display = 'none';
             }
             
-            if (result.isAdmin) { isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; }
-            else { isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; }
+            if (result.isAdmin) { 
+                isAdminGlobal = true; document.getElementById('tabAdminBtn').style.display = 'block'; 
+            } else { 
+                isAdminGlobal = false; document.getElementById('tabAdminBtn').style.display = 'none'; 
+                // 🛡️ กันเหนียว: ถ้าโดนปลดสิทธิ์แต่แอบกดเข้าแท็บแอดมินไปแล้ว ให้เด้งกลับหน้าแรกทันที
+                if (document.getElementById('adminTab').style.display === 'block') { switchTab('checkin'); }
+            }
 
             if (result.checkedIn) { renderPersonalDashboard(result); } 
             else {
@@ -791,6 +798,8 @@
             }
 
             document.querySelectorAll('.tab-btn').forEach(t => t.disabled = false);
+            btn.disabled = false; // 🌟 ปลดล็อกปุ่ม
+            btn.innerText = (type === 'MAIN') ? "🟢 ยืนยันการลงชื่อเข้าสนาม" : "🟢 ยืนยันเพิ่มชื่อเพื่อนที่มาทีหลัง"; // 🌟 รีเซ็ตข้อความ
             if (type === 'LATE') { 
                 document.getElementById('lateFriendsArea').innerHTML = ""; 
                 document.getElementById('submitLateBtn').style.display = "none";
