@@ -844,12 +844,16 @@
         let reader = new FileReader();
         reader.onload = function(e) {
             let img = new Image();
+            let timeoutFired = false; // 🌟 ตัวแปรดักจับสถานะ Timeout
             let fallbackTimer = setTimeout(() => {
+                timeoutFired = true;
                 showToast("⚠️ การประมวลผลรูปใช้เวลานานเกินไป กรุณาลองใหม่", "error");
                 btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+                img.onload = null; // 🌟 ยกเลิกการทำงานของรูปภาพที่กำลังประมวลผลอยู่
             }, 8000);
 
             img.onload = function() {
+                if (timeoutFired) return; // 🌟 ถ้ายกเลิกไปแล้ว ห้ามทำคำสั่งด้านล่างต่อเด็ดขาด
                 clearTimeout(fallbackTimer);
                 let canvas = document.createElement('canvas'); let max_size = 600; 
                 let width = img.width; let height = img.height;
