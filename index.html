@@ -266,7 +266,7 @@
 
 <script>
     // 🚨 Global Fetch Interceptor (เกราะป้องกันแอปหมุนค้างตลอดกาลในทุกๆ จุด)
-    const originalFetch = window.fetch;
+    const originalFetch = window.fetch.bind(window);
     window.fetch = async function(url, options) {
         if (url && typeof url === 'string' && url.includes("script.google.com")) {
             options = options || {};
@@ -339,7 +339,7 @@
         try {
             // 🛡️ ป้องกัน LIFF ค้างตลอดกาลด้วย Promise.race (ตัดจบใน 12 วินาที)
             const liffInit = liff.init({ liffId: MY_LIFF_ID });
-            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 12000));
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF Init Timeout")), 20000));
             await Promise.race([liffInit, initTimeout]);
             
             if (liff.isLoggedIn()) {
