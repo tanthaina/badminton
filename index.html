@@ -125,7 +125,7 @@
             
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 13px; font-weight: bold; color: #374151;">📸 แนบรูปสลิปหลักฐาน:</label>
-                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onchange="previewSlip(event)">
+                <input type="file" id="slipFileInput" accept="image/*" style="margin-top: 5px; background: white; touch-action: manipulation;" onclick="this.value=null;" onchange="previewSlip(event)">
                 <!-- เพิ่มกรอบแสดงพรีวิวสลิป -->
                 <img id="slipPreviewImg" style="display: none; width: 100%; max-height: 250px; object-fit: contain; margin-top: 10px; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb; padding: 5px; box-sizing: border-box;">
                 
@@ -294,7 +294,7 @@
             const file = event.target.files[0];
             const preview = document.getElementById('slipPreviewImg');
             if (file) {
-                if (preview.src && preview.src.startsWith('blob:')) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
+                if (preview.src) { URL.revokeObjectURL(preview.src); } // 🛡️ คืนหน่วยความจำให้มือถือ ป้องกันแอป LINE เด้งปิดตัวเอง
                 preview.src = URL.createObjectURL(file);
                 preview.style.display = 'block';
             } else {
@@ -537,11 +537,11 @@
         if (res.hasUnpaid || res.isWaiting) {
             document.getElementById('paymentSec').style.display = 'block';
             if (res.isWaiting && res.hasUnpaid) {
-                btnPay.disabled = true; btnPay.style.backgroundColor = "#9ca3af";
+                btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
                 warnTxt.style.display = 'block';
                 warnTxt.style.color = "#ea580c";
-                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
-                btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
+                warnTxt.innerText = "⚠️ มีเพื่อนมาเพิ่ม สามารถอัพสลิปใหม่เพื่อรวมยอดทั้งหมดได้ครับ";
+                btnPay.innerText = "🔄 อัพสลิปใหม่ (รวมยอดทั้งหมด)";
             } else if (res.isWaiting) {
                 btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
                 warnTxt.style.display = 'block';
@@ -724,8 +724,8 @@
                 document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
                 // ซ่อน Preview เมื่อส่งสำเร็จ
                 document.getElementById('slipPreviewImg').style.display = 'none';
-                showToast("✅ อัปโหลดสลิปสำเร็จ");
                 await refreshPersonalState();
+                showToast("✅ อัปโหลดสลิปสำเร็จ");
             } else { throw new Error(result.message); }
         } catch (e) { 
             console.error("[PAY_01] Payment Confirm Error:", e);
