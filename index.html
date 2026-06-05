@@ -829,9 +829,10 @@
         btn.disabled = true; btn.innerText = "⏳ กำลังล็อกปุ่มและจัดการรูปภาพ...";
         
         const fileInput = document.getElementById('slipFileInput');
-        // เกราะป้องกัน JSON พังจากเครื่องหมายคำพูด
+        
         const noteInputRaw = document.getElementById('paymentNoteInput').value.trim();
-        const noteSafe = noteInputRaw.replace(/"/g, "'").replace(/\\/g, "/");
+        // 🛡️ ป้องกัน XSS ด่านแรก (ไม่ต้องกันเรื่อง JSON พัง เพราะ JSON.stringify ทำงานได้ปลอดภัย 100% อยู่แล้ว)
+        const noteSafe = noteInputRaw.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         
         if (fileInput.files.length === 0) { 
             if (!noteSafe) { showToast("⚠️ กรุณาแนบสลิป หรือพิมพ์หมายเหตุ (เช่น จ่ายสด) ก่อนส่งครับ", "error"); btn.disabled = false; btn.innerText = "✅ ส่งสลิปและบันทึกข้อมูล"; return; }
