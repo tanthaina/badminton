@@ -795,6 +795,10 @@
 
     function copyAcc() { navigator.clipboard.writeText("020219081907").then(() => showToast("📋 คัดลอกเลขบัญชีสำเร็จ", "success")).catch(e => showToast("⚠️ อุปกรณ์ไม่รองรับการคัดลอกอัตโนมัติ กรุณาคัดลอกด้วยตนเอง", "error")); }
     
+    function closeSlipModal() {
+        document.getElementById('slipModal').style.display = 'none';
+    }
+
     function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
     function closeManualModal() { 
         document.getElementById('manualModal').style.display = 'none'; 
