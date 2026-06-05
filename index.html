@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🏸 ระบบจัดการชมรมแบดมินตันตากฟ้า</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==========================================
     📝 DEV NOTES & POST-MORTEM (ฝั่งหน้าบ้าน):
@@ -540,14 +539,20 @@
             if (res.isWaiting && res.hasUnpaid) {
                 btnPay.disabled = true; btnPay.style.backgroundColor = "#9ca3af";
                 warnTxt.style.display = 'block';
+                warnTxt.style.color = "#ea580c";
+                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
                 btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             } else if (res.isWaiting) {
-                btnPay.disabled = true; btnPay.style.backgroundColor = "#eab308";
-                warnTxt.style.display = 'none';
-                btnPay.innerText = "⏳ รอแอดมินตรวจสลิปใบล่าสุด";
+                btnPay.disabled = false; btnPay.style.backgroundColor = "#eab308";
+                warnTxt.style.display = 'block';
+                warnTxt.style.color = "#16a34a";
+                warnTxt.innerText = "✅ ระบบได้รับสลิปแล้ว หากอัพผิดแก้ไขใหม่ได้ครับ";
+                btnPay.innerText = "🔄 อัพสลิปใหม่ (แทนที่ใบเดิม)";
             } else {
                 btnPay.disabled = false; btnPay.style.backgroundColor = "var(--primary)";
                 warnTxt.style.display = 'none';
+                warnTxt.style.color = "#ea580c";
+                warnTxt.innerText = "⏳ กรุณารอแอดมินตรวจสลิปใบก่อนหน้าให้เสร็จ ถึงจะส่งสลิปยอดใหม่ได้ครับ";
                 btnPay.innerText = "✅ ส่งสลิปและบันทึกข้อมูล";
             }
         } else { document.getElementById('paymentSec').style.display = 'none'; }
@@ -573,8 +578,6 @@
     }
 
     function switchTab(target) {
-        document.getElementById('checkinTab').style.display = (target === 'checkin') ? 'block' : 'none';
-        document.getElementById('dashboardTab').style.display = (target === 'dashboard') ? 'block' : 'none';
         ['checkin', 'dashboard'].forEach(t => {
             let tab = document.getElementById(t + 'Tab');
             if (t === target) {
@@ -721,8 +724,8 @@
                 document.getElementById('slipFileInput').value = ""; document.getElementById('paymentNoteInput').value = "";
                 // ซ่อน Preview เมื่อส่งสำเร็จ
                 document.getElementById('slipPreviewImg').style.display = 'none';
-                await refreshPersonalState();
                 showToast("✅ อัปโหลดสลิปสำเร็จ");
+                await refreshPersonalState();
             } else { throw new Error(result.message); }
         } catch (e) { 
             console.error("[PAY_01] Payment Confirm Error:", e);
@@ -796,10 +799,6 @@
     function closeManualModal() { 
         document.getElementById('manualModal').style.display = 'none'; 
         try { if (userUid) localStorage.setItem('manual_accepted_' + userUid, 'true'); } catch(e){} // ป้องกันบั๊ก Private Mode
-    }
-
-    function closeSlipModal() {
-        document.getElementById('slipModal').style.display = 'none';
     }
 
     function openQrModal() { document.getElementById('qrModal').style.display = 'flex'; }
